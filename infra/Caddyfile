@@ -1,0 +1,17 @@
+{
+	auto_https disable_redirects
+}
+
+https://localhost:8443, https://{$MBAS_LAN_IP}:8443 {
+	tls internal
+
+	handle /rtc* {
+		reverse_proxy livekit:7880
+	}
+	handle /api/* {
+		reverse_proxy host.docker.internal:{$MBAS_API_PORT}
+	}
+	handle {
+		reverse_proxy host.docker.internal:{$MBAS_WEB_PORT}
+	}
+}

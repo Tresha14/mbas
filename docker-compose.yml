@@ -1,0 +1,62 @@
+name: mbas
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mbas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mbas}
+      POSTGRES_DB: ${POSTGRES_DB:-mbas}
+    ports:
+      - "${MBAS_PG_PORT:-5442}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mbas}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${MBAS_REDIS_PORT:-6389}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Self-hosted open-source WebRTC SFU.
+  livekit:
+    image: livekit/livekit-server:v1.13.10
+    command: --config /etc/livekit.yaml --node-ip ${MBAS_LAN_IP:-127.0.0.1}
+    volumes:
+      - ./infra/livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7880:7880"       # signalling (ws)
+      - "7881:7881"       # ICE over TCP
+      - "7882:7882/udp"   # ICE over UDP (single muxed port)
+
+  # HTTPS front door so a second laptop on the LAN gets a secure context
+  # (browsers only allow camera/mic/screen capture on https or localhost).
+  # Routes: /rtc -> livekit, /api -> recorder backend, everything else -> recorder web.
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      MBAS_LAN_IP: ${MBAS_LAN_IP:-127.0.0.1}
+      MBAS_API_PORT: ${MBAS_API_PORT:-8010}
+      MBAS_WEB_PORT: ${MBAS_WEB_PORT:-3010}
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    ports:
+      - "8443:8443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - livekit
+
+volumes:
+  pgdata:
+  caddydata:

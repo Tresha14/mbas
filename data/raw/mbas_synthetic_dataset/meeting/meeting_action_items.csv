@@ -1,0 +1,110 @@
+meeting_id,owner_id,action_item,raised_at_s,status
+M001,P022,P022 to prepare the demo for the review meeting.,878.6,open
+M002,P048,P048 to update the test cases for the payment module.,1133.8,open
+M002,P048,P048 to send meeting notes to the whole team.,1519.4,open
+M002,P040,P040 to send meeting notes to the whole team.,1447.7,open
+M002,P048,P048 to update the test cases for the payment module.,2087.4,open
+M003,P053,P053 to check the database performance issue.,236.5,open
+M003,P075,P075 to prepare the demo for the review meeting.,538.4,open
+M003,P053,P053 to share the updated design document by Monday.,234.2,open
+M003,P078,P078 to prepare the demo for the review meeting.,359.5,open
+M004,P101,P101 to update the test cases for the payment module.,1456.1,open
+M004,P104,P104 to follow up with the client about requirements.,1395.7,open
+M004,P101,P101 to check the database performance issue.,937.7,open
+M005,P084,P084 to follow up with the client about requirements.,2030.3,open
+M005,P084,P084 to follow up with the client about requirements.,1036.5,open
+M005,P084,P084 to update the test cases for the payment module.,1620.4,open
+M005,P004,P004 to follow up with the client about requirements.,2123.8,open
+M006,P081,P081 to share the updated design document by end of week.,631.9,open
+M006,P062,P062 to send meeting notes to the whole team.,1664.6,open
+M007,P010,P010 to fix the login bug before the next standup.,1792.5,open
+M007,P062,P062 to follow up with the client about requirements.,1309.6,open
+M007,P025,P025 to follow up with the client about requirements.,663.4,open
+M007,P093,P093 to prepare the demo for the review meeting.,1643.4,open
+M008,P079,P079 to share the updated design document by Wednesday.,1587.1,open
+M008,P079,P079 to send meeting notes to the whole team.,1157.1,open
+M008,P071,P071 to send meeting notes to the whole team.,1030.2,open
+M009,P042,P042 to prepare the demo for the review meeting.,823.9,open
+M009,P024,P024 to prepare the demo for the review meeting.,877.5,open
+M009,P002,P002 to check the database performance issue.,516.7,open
+M010,P088,P088 to share the updated design document by Friday.,1324.2,open
+M011,P015,P015 to share the updated design document by Wednesday.,201.8,open
+M012,P072,P072 to share the updated design document by Friday.,1431.5,open
+M012,P051,P051 to update the test cases for the payment module.,1152.5,open
+M012,P051,P051 to update the test cases for the payment module.,598.0,open
+M012,P051,P051 to send meeting notes to the whole team.,979.8,open
+M013,P070,P070 to share the updated design document by end of week.,956.0,open
+M013,P070,P070 to update the test cases for the payment module.,1029.3,open
+M014,P088,P088 to check the database performance issue.,264.7,open
+M015,P034,P034 to send meeting notes to the whole team.,686.7,open
+M015,P063,P063 to prepare the demo for the review meeting.,278.0,open
+M015,P024,P024 to update the test cases for the payment module.,290.2,open
+M016,P026,P026 to prepare the demo for the review meeting.,942.8,open
+M016,P068,P068 to fix the login bug before the next standup.,1571.5,open
+M016,P111,P111 to send meeting notes to the whole team.,1466.8,open
+M016,P026,P026 to share the updated design document by Wednesday.,2220.3,open
+M017,P045,P045 to fix the login bug before the next standup.,1891.9,open
+M018,P066,P066 to prepare the demo for the review meeting.,385.3,open
+M018,P066,P066 to check the database performance issue.,517.9,open
+M018,P087,P087 to send meeting notes to the whole team.,433.1,open
+M019,P081,P081 to send meeting notes to the whole team.,1146.9,open
+M019,P013,P013 to fix the login bug before the next standup.,1337.8,open
+M019,P066,P066 to follow up with the client about requirements.,1423.4,open
+M020,P067,P067 to check the database performance issue.,742.9,open
+M020,P067,P067 to follow up with the client about requirements.,1127.8,open
+M020,P050,P050 to send meeting notes to the whole team.,1315.1,open
+M020,P098,P098 to prepare the demo for the review meeting.,1122.3,open
+M021,P021,P021 to share the updated design document by Wednesday.,1387.1,open
+M021,P103,P103 to check the database performance issue.,1677.5,open
+M021,P019,P019 to share the updated design document by Wednesday.,1002.4,open
+M022,P035,P035 to send meeting notes to the whole team.,2449.5,open
+M022,P022,P022 to fix the login bug before the next standup.,2634.9,open
+M023,P077,P077 to send meeting notes to the whole team.,307.5,open
+M023,P059,P059 to check the database performance issue.,545.6,open
+M024,P028,P028 to fix the login bug before the next standup.,779.8,open
+M024,P062,P062 to fix the login bug before the next standup.,511.0,open
+M024,P079,P079 to fix the login bug before the next standup.,471.0,open
+M024,P062,P062 to update the test cases for the payment module.,1077.1,open
+M025,P065,P065 to update the test cases for the payment module.,2375.0,open
+M025,P095,P095 to prepare the demo for the review meeting.,1499.0,open
+M025,P024,P024 to follow up with the client about requirements.,1179.7,open
+M025,P065,P065 to fix the login bug before the next standup.,1220.5,open
+M026,P039,P039 to prepare the demo for the review meeting.,857.7,open
+M026,P004,P004 to follow up with the client about requirements.,570.6,open
+M027,P116,P116 to share the updated design document by Wednesday.,1410.6,open
+M027,P084,P084 to prepare the demo for the review meeting.,1811.5,open
+M027,P040,P040 to prepare the demo for the review meeting.,1330.4,open
+M027,P084,P084 to follow up with the client about requirements.,1558.2,open
+M028,P066,P066 to prepare the demo for the review meeting.,1358.6,open
+M028,P032,P032 to share the updated design document by Friday.,628.1,open
+M028,P092,P092 to send meeting notes to the whole team.,1213.5,open
+M029,P047,P047 to fix the login bug before the next standup.,600.4,open
+M029,P047,P047 to update the test cases for the payment module.,1241.0,open
+M029,P112,P112 to share the updated design document by end of week.,1005.0,open
+M029,P047,P047 to follow up with the client about requirements.,1085.5,open
+M030,P089,P089 to send meeting notes to the whole team.,644.0,open
+M030,P085,P085 to fix the login bug before the next standup.,779.6,open
+M030,P106,P106 to update the test cases for the payment module.,1239.9,open
+M031,P102,P102 to share the updated design document by Wednesday.,606.6,open
+M031,P058,P058 to send meeting notes to the whole team.,570.3,open
+M032,P052,P052 to share the updated design document by end of week.,1224.9,open
+M032,P058,P058 to prepare the demo for the review meeting.,1205.3,open
+M033,P013,P013 to update the test cases for the payment module.,2189.3,open
+M033,P013,P013 to share the updated design document by Wednesday.,1912.9,open
+M034,P009,P009 to follow up with the client about requirements.,1659.1,open
+M034,P045,P045 to fix the login bug before the next standup.,1787.8,open
+M035,P045,P045 to follow up with the client about requirements.,718.1,open
+M036,P107,P107 to update the test cases for the payment module.,1413.9,open
+M036,P060,P060 to update the test cases for the payment module.,1084.2,open
+M036,P018,P018 to fix the login bug before the next standup.,1389.2,open
+M037,P042,P042 to update the test cases for the payment module.,932.6,open
+M038,P098,P098 to prepare the demo for the review meeting.,667.9,open
+M038,P063,P063 to update the test cases for the payment module.,973.5,open
+M038,P110,P110 to share the updated design document by Wednesday.,532.4,open
+M038,P117,P117 to update the test cases for the payment module.,1237.0,open
+M039,P111,P111 to check the database performance issue.,789.1,open
+M039,P007,P007 to prepare the demo for the review meeting.,2242.9,open
+M039,P111,P111 to fix the login bug before the next standup.,2135.8,open
+M039,P061,P061 to prepare the demo for the review meeting.,2009.4,open
+M040,P089,P089 to check the database performance issue.,1237.7,open
+M040,P022,P022 to prepare the demo for the review meeting.,763.5,open

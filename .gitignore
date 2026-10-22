@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment
+.env
+.env.local
+*.pem
+
+# Data: recorded sessions contain personal data (DPDP Act 2023) - never commit them.
+data/raw/*
+!data/raw/.gitkeep
+!data/raw/mbas_synthetic_dataset/
+data/processed/*
+!data/processed/.gitkeep
+
+# Training outputs
+runs/*
+!runs/.gitkeep
+checkpoints/
+*.ckpt
+*.pt
+*.onnx
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

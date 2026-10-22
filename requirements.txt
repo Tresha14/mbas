@@ -1,0 +1,27 @@
+# Core ML (install torch/torchaudio from the CUDA index, see README)
+torch>=2.3
+torchaudio>=2.3
+opencv-python>=4.9
+librosa>=0.10
+numpy>=1.26
+pandas>=2.2
+scikit-learn>=1.4
+sentencepiece>=0.2
+onnx>=1.16
+onnxruntime>=1.18
+tensorboard>=2.16
+pyyaml>=6.0
+soundfile>=0.12
+
+# Backend / recorder
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pyjwt>=2.8
+redis>=5.0
+psycopg[binary]>=3.1
+imageio-ffmpeg>=0.5     # bundled ffmpeg binary, used to probe recorded webm files
+
+# Tests
+pytest>=8.0
+httpx>=0.27
