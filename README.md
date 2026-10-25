@@ -13,13 +13,16 @@ initialisation on our own recorded dataset plus public raw datasets.
 | --- | --- | --- |
 | 1 | Repo skeleton, docker compose, dataset recorder, `check_session.py` | done (see below) |
 | 2 | Dataset protocol, annotation, public datasets, splits | tools done; recording + labelling in progress (see `docs/dataset_card.md`) |
-| 3 | Data pipeline + features (`ml/common`) | done: `.	asks.ps1 data` |
-| 4–5 | Vision: face/eye/iris, head pose, engagement, attention | – |
-| 6 | VAD + Conformer-CTC ASR + KenLM | – |
-| 7 | Hesitation, prosody, speaking patterns, conversation | – |
-| 8 | Answer quality + multimodal fusion | – |
-| 9 | Real-time backend + Next.js UI | – |
-| 10 | Reports, evaluation, deployment | – |
+| 3 | Data pipeline + features (`ml/common`) | done: `.\tasks.ps1 data` |
+| 4–5 | Vision: face + landmarks, head pose, gaze/iris, engagement, attention, ONNX export | trained on WIDER / MPIIGaze / synthetic; CNN-GRU waits for DAiSEE or our labels |
+| 6 | VAD + Conformer-CTC ASR + our 4-gram LM + streaming + mic demo | code done; trains on LibriSpeech (`.\tasks.ps1 train-all vad lm asr`) |
+| 7 | Disfluency CRNN, pauses, prosody, speaking patterns, conversation, behaviour JSON | done (SEP-28k + synthetic) |
+| 8 | Answer-quality transformer vs TF-IDF, fusion + ablation + explanations, meeting head on AMI | done (synthetic + AMI) |
+| 9 | FastAPI + workers + LiveKit bot + Next.js cockpit / candidate room / meeting mode | done |
+| 10 | Reports + release flow, model report, bias check, user-study kit, one-command start, viva material | done; user study and demo video need people |
+
+Results for every model: `docs/model_report.md` (generated), per-model cards in `docs/model_cards/`, numbers in
+`docs/metrics/*.json`. Anything trained on the synthetic dataset is labelled SYNTHETIC there.
 
 ## Repo layout
 
@@ -171,6 +174,65 @@ rebuilds `notebooks/eda.ipynb`.
 | `text.py` | ASR text normalisation; SentencePiece unigram tokenizers (asr 1000, answer 8000) trained from scratch |
 | `datasets.py` | Face, Gaze, EngagementClip, VAD, ASR, Disfluency, Answer, Fusion datasets |
 | `config.py` | paths, seeds, YAML configs with `key=value` overrides |
+
+## Stages 4-8: models
+
+| Model | Code | Data now | Train / evaluate |
+| --- | --- | --- | --- |
+| Face + 5 landmarks (BlazeFace-style, 0.38 M) | `ml/vision/face_detector` | WIDER FACE + RetinaFace landmarks | `python -m ml.vision.face_detector.train` / `.eval` |
+| Head pose CNN | `ml/vision/headpose` | WIDER faces, solvePnP labels | `python -m ml.vision.headpose.train` |
+| Gaze + iris CNN | `ml/vision/gaze_iris` | MPIIGaze (person-wise) | `.train` / `.eval` |
+| Engagement CNN-GRU | `ml/vision/engagement` | DAiSEE (request) / our windows | `.train --stage pretrain|finetune|scratch`, `.eval` |
+| Window engagement MLP + attention score | `ml/vision/engagement/window_models.py` | synthetic windows | `python -m ml.vision.engagement.window_models` |
+| VAD | `ml/speech/vad` | LibriSpeech + noise | `python -m ml.speech.vad.train` |
+| Conformer-CTC ASR + streaming | `ml/speech/asr` | LibriSpeech (+ Common Voice, ours) | `.train [--resume]` / `.eval` |
+| 4-gram Kneser-Ney LM (ours, ARPA) | `ml/speech/lm/ngram.py` | LibriSpeech text + interview text | `python -m ml.speech.lm.ngram` |
+| Disfluency CRNN | `ml/behaviour/disfluency` | SEP-28k | `.train` / `.eval` |
+| Speaking pattern + hesitation index | `ml/behaviour/answer_models.py` | synthetic answers | `python -m ml.behaviour.answer_models` |
+| Answer-quality transformer (+ TF-IDF baseline) | `ml/response/answer_quality` | synthetic answers + off-topic pairs | `.train` / `.eval` |
+| Fusion network + Shapley reasons | `ml/fusion` | synthetic answers (out-of-fold answer features) | `python -m ml.fusion.answer_features`, `python -m ml.fusion.train` |
+| Meeting head | `ml/fusion/meeting.py` | synthetic meetings, AMI test | `python -m ml.fusion.meeting` |
+
+`.\tasks.ps1 train-all` runs everything one model at a time (low RAM). `.\tasks.ps1 export` exports to ONNX and
+benchmarks latency (`docs/metrics/onnx_latency.md`). Demos: `.\tasks.ps1 demo-webcam`, `.\tasks.ps1 demo-mic`
+(needs `pip install sounddevice`). Viva: `.\tasks.ps1 retrain-live` retrains the VAD and gaze CNN from random init in minutes.
+
+## Stages 9-10: the product
+
+```
+candidate browser --WebRTC--> LiveKit SFU <--WebRTC-- interviewer browser
+                                  |                          ^
+                    hidden analysis bot (backend/workers/bot.py)   | WebSocket /ws/analytics (interviewer tokens only)
+                     frames 10 fps | PCM 640 ms                    |
+                         v         v                               |
+                     Redis streams --> vision worker ----------> analytics:{id} --> FastAPI (backend/main.py)
+                                   --> speech/answer worker ---^        PostgreSQL: users, interviews, participants,
+                                                                        questions, transcript_segments, window_scores,
+                                                                        answer_scores, follow_ups, reports
+```
+
+```powershell
+.\tasks.ps1 web-install             # once
+.\tasks.ps1 start-all               # postgres, redis, livekit, caddy + API (:8020) + workers + web (:3020)
+# or fully in containers (CPU):  docker compose --profile app up -d --build
+```
+
+Open http://localhost:3020, create an interviewer account, create an interview and send the candidate link (for a
+second laptop: `https://<LAN_IP>:8444/join/...` after setting `MBAS_LAN_IP` and opening TCP 8444 in the firewall).
+
+| Page | Who | What |
+| --- | --- | --- |
+| `/dashboard` | interviewer / meeting host | create + schedule interviews or meetings, copy the candidate link |
+| `/join/<invite>` -> `/room/<id>` | candidate | consent, camera/mic check, video call, screen share, timer; **no analytics** |
+| `/cockpit/<id>` | interviewer | video + shared screen, live transcript (fillers highlighted), attention / engagement / hesitation / confidence gauges, iris-gaze plot, alerts, speaking chips, timeline with follow-up markers, question checklist, notes, per-answer scores + reasons |
+| `/meeting/<id>` | meeting host | participant grid, talk-time bars, per-person engagement |
+| `/report/<id>` | interviewer | radar, replay synced with the transcript, per-question cards, follow-ups, PDF export, candidate-feedback editor + release |
+| `/feedback/<token>` | candidate | released strengths + 3 improvements with timestamps and tips |
+
+Candidate tokens are rejected by the analytics WebSocket on the server (tested in `tests/test_backend.py`); `/metrics`
+shows per-model and end-to-end latency. Stage 10 documents: `docs/model_report.md`, `docs/bias_check.md`,
+`docs/user_study/`, `docs/project_report_outline.md`, `docs/viva_deck_outline.md`, `docs/demo_script.md`
+(`.\tasks.ps1 reports` regenerates them).
 
 ## Tests
 
