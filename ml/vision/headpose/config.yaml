@@ -1,0 +1,16 @@
+# Head-pose CNN, random init. Labels: solvePnP on WIDER FACE RetinaFace landmarks (+ our scripted segments).
+name: headpose
+seed: 42
+model:
+  width: 32
+  dropout: 0.2
+data:
+  workers: 4
+  limit: null
+train:
+  epochs: 20
+  batch_size: 128
+  lr: 0.001
+  weight_decay: 0.0001
+  warmup_steps: 300
+  amp: true

@@ -1,0 +1,73 @@
+{
+  "model": "meeting_head",
+  "generated": "2026-10-25T19:03:40",
+  "relative_turn_features (used)": {
+    "synthetic_test": {
+      "participants": 29,
+      "engagement_mae": 0.0381,
+      "balance_mae": 0.0283
+    },
+    "ami": {
+      "participants": 682,
+      "meetings": 171,
+      "balance_mae_vs_formula": 0.0317,
+      "balance_mae_drop": 0.0034,
+      "engagement_pred_mean": 0.5513,
+      "engagement_pred_std": 0.0314
+    }
+  },
+  "absolute_turn_features (first try)": {
+    "synthetic_test": {
+      "participants": 29,
+      "engagement_mae": 0.0381,
+      "balance_mae": 0.0239
+    },
+    "ami": {
+      "participants": 682,
+      "meetings": 171,
+      "balance_mae_vs_formula": 0.1201,
+      "balance_mae_drop": 0.0962,
+      "engagement_pred_mean": 0.2395,
+      "engagement_pred_std": 0.0963
+    }
+  },
+  "note": "AMI is audio-only here (camera_on = 0) and has no engagement labels; balance is checked against its closed-form definition 1 - |share - 1/n| * n / 2.",
+  "feature_ranges_5_95pct": {
+    "synthetic_train": {
+      "turns_per_min": [
+        0.18,
+        0.98
+      ],
+      "avg_turn_s": [
+        12.55,
+        31.2
+      ],
+      "turn_share_vs_fair": [
+        0.37,
+        1.7
+      ],
+      "turn_length_vs_meeting": [
+        0.59,
+        1.53
+      ]
+    },
+    "ami": {
+      "turns_per_min": [
+        1.51,
+        6.18
+      ],
+      "avg_turn_s": [
+        2.2,
+        8.21
+      ],
+      "turn_share_vs_fair": [
+        0.53,
+        1.5
+      ],
+      "turn_length_vs_meeting": [
+        0.57,
+        1.61
+      ]
+    }
+  }
+}

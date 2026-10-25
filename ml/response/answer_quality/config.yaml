@@ -1,0 +1,20 @@
+# Answer-quality transformer, random init, SentencePiece answer vocabulary (data/processed/tokenizers/answer.model).
+name: answer_quality
+seed: 42
+source: synthetic          # answers table: synthetic now, "recorded" once our answers are labelled
+model:
+  d_model: 256
+  heads: 4
+  layers: 4
+  ff: 1024
+  max_len: 256
+  dropout: 0.1
+data:
+  off_topic_pairs: 0.5     # extra mismatched question/answer pairs per training answer (relevance 0, topic_not_covered)
+train:
+  epochs: 40
+  batch_size: 32
+  lr: 0.0003
+  weight_decay: 0.01
+  warmup_steps: 300
+  amp: true

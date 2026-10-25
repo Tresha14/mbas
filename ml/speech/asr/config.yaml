@@ -1,0 +1,28 @@
+# Conformer-CTC, random init. Fits one 8-16 GB GPU (RTX 4060 8 GB here) with duration-bucketed batches + fp16.
+name: asr
+seed: 42
+model:
+  d: 176
+  heads: 4
+  layers: 12
+  kernel: 31
+  dropout: 0.1
+data:
+  sources: [librispeech, common_voice_in, recorded]
+  max_s: 17.0
+  batch_seconds: 360        # total audio per batch (lower to 200 on 6 GB GPUs)
+  workers: 6
+  limit: null
+train:
+  epochs: 40
+  peak_lr: 0.0015
+  warmup_steps: 6000
+  weight_decay: 0.001
+  grad_clip: 5.0
+  accum: 1
+  amp: true
+  dynamic_chunk_p: 0.5      # share of batches trained with chunked (streaming) attention
+  chunk_choices: [8, 16, 24, 32]   # 40 ms frames: 320 / 640 / 960 / 1280 ms
+  left_chunks: 4
+  average_last: 5           # checkpoint averaging
+  val_items: 400

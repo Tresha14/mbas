@@ -5,7 +5,8 @@ box annotations; the test split has no public boxes and is skipped).
 
     python -m tools.datasets.wider_face
 Output: data/processed/public/wider_face/manifest.parquet (one row per image;
-boxes = JSON [[x, y, w, h, blur, expression, illumination, invalid, occlusion, pose], ...])
+boxes = JSON [[x, y, w, h, blur, expression, illumination, invalid, occlusion, pose], ...];
+landmarks = JSON [[x, y, w, h, 5 x (x, y), has_landmarks], ...] from the RetinaFace annotations, train only)
 """
 from __future__ import annotations
 
@@ -21,6 +22,27 @@ from tools.datasets.common import dirs, download, extract, rel, write_outputs
 NAME = "wider_face"
 BASE = "https://huggingface.co/datasets/CUHK-CSE/wider_face/resolve/main/data/"
 FILES = {"WIDER_train.zip": 1465602149, "WIDER_val.zip": 362752168, "wider_face_split.zip": 3591642}
+# RetinaFace annotations (Deng et al. 2020): the same train boxes + 5 landmarks per face
+# (left eye, right eye, nose, left mouth corner, right mouth corner). Annotation data only.
+LANDMARKS_URL = ("https://huggingface.co/datasets/yuuMQ/Retinaface_WiderFaceDataset/resolve/main/"
+                 "widerface/train/label.txt")
+LANDMARKS_SIZE = 17147541
+
+
+def parse_landmarks(path: Path) -> dict[str, list[list[float]]]:
+    """RetinaFace label.txt -> image name -> [[x, y, w, h, lx1, ly1, ..., lx5, ly5, has_landmarks], ...]."""
+    out: dict[str, list[list[float]]] = {}
+    cur = None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("#"):
+            cur = line[1:].strip()
+            out[cur] = []
+        elif line.strip() and cur is not None:
+            v = [float(x) for x in line.split()]
+            pts = [v[4 + 3 * k + j] for k in range(5) for j in (0, 1)]
+            has = float(v[4] >= 0)
+            out[cur].append(v[:4] + pts + [has])
+    return out
 
 
 def parse_gt(path: Path) -> list[dict]:
@@ -39,8 +61,9 @@ def parse_gt(path: Path) -> list[dict]:
     return out
 
 
-def convert(extracted: Path) -> pd.DataFrame:
+def convert(extracted: Path, landmarks: dict[str, list[list[float]]] | None = None) -> pd.DataFrame:
     rows = []
+    landmarks = landmarks or {}
     for split, folder in (("train", "WIDER_train"), ("val", "WIDER_val")):
         gt = next(extracted.rglob(f"wider_face_{split}_bbx_gt.txt"))
         img_root = next(p for p in extracted.rglob(folder) if (p / "images").is_dir()) / "images"
@@ -51,6 +74,7 @@ def convert(extracted: Path) -> pd.DataFrame:
                 "item_id": f"{split}/{e['name']}", "subject_id": e["name"].split("/")[0],  # event category
                 "split_official": split, "path": rel(img), "event": e["name"].split("/")[0],
                 "n_faces": len(e["boxes"]), "n_valid_faces": len(valid), "boxes": json.dumps(e["boxes"]),
+                "landmarks": json.dumps(landmarks.get(e["name"], [])) if split == "train" else "[]",
                 "exists": img.exists(),
             })
     return pd.DataFrame(rows)
@@ -64,8 +88,13 @@ def main(argv: list[str] | None = None) -> int:
     if not args.skip_download:
         for f, size in FILES.items():
             extract(download(BASE + f, downloads / f, size), extracted)
-    m = convert(extracted)
+    lm_file = downloads / "retinaface_train_label.txt"
+    if not args.skip_download:
+        download(LANDMARKS_URL, lm_file, LANDMARKS_SIZE)
+    m = convert(extracted, parse_landmarks(lm_file) if lm_file.exists() else None)
     write_outputs(NAME, m, {
+        "landmarks": "RetinaFace 5-point annotations for train images (left/right eye, nose, mouth corners)",
+        "n_faces_with_landmarks": int(sum(sum(1 for f in json.loads(x) if f[-1] > 0) for x in m.landmarks)),
         "title": "WIDER FACE", "used_for": "face detector (Stage 4)", "license": "research only (CC BY-NC-ND 4.0)",
         "source": "http://shuoyang1213.me/WIDERFACE/ (mirror: huggingface.co/datasets/CUHK-CSE/wider_face)",
         "n_boxes": int(m.n_faces.sum()), "missing_images": int((~m.exists).sum()),

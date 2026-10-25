@@ -1,0 +1,30 @@
+{
+  "model": "window_models",
+  "generated": "2026-10-25T16:24:08",
+  "source": "synthetic",
+  "train_windows": 32881,
+  "test_windows": 6848,
+  "engagement_window_mlp": {
+    "macro_f1": 0.7464,
+    "accuracy": 0.763,
+    "per_class_f1": {
+      "disengaged": 0.755,
+      "neutral": 0.6409,
+      "engaged": 0.8435
+    },
+    "majority_baseline_macro_f1": 0.1782
+  },
+  "attention": {
+    "linear": {
+      "score_mae": 3.79,
+      "score_corr": 0.9574,
+      "onoff_macro_f1": 0.94
+    },
+    "mlp": {
+      "score_mae": 3.156,
+      "score_corr": 0.9709,
+      "onoff_macro_f1": 0.9501
+    }
+  },
+  "attention_selected": "mlp"
+}

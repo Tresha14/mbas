@@ -32,16 +32,36 @@ def load_audio(path: str | Path, sr: int = SR, start_s: float | None = None, end
 
 
 class LogMel(torch.nn.Module):
-    """waveform (B, T) -> log-mel (B, 80, frames); log(mel + 1e-6)."""
+    """waveform (B, T) -> log-mel (B, n_mels, frames); log(mel + 1e-6).
 
-    def __init__(self, sr: int = SR, n_fft: int = N_FFT, hop: int = HOP, n_mels: int = N_MELS):
+    The STFT is a 1-D convolution with fixed windowed cosine/sine kernels (identical to torch.stft with a periodic
+    Hann window, reflect padding, power 2) so the whole front end exports to ONNX. Mel filters: HTK scale, no norm
+    (torchaudio's MelSpectrogram defaults). Nothing here is learned.
+    """
+
+    def __init__(self, sr: int = SR, n_fft: int = N_FFT, hop: int = HOP, n_mels: int = N_MELS,
+                 f_min: float = 20.0, f_max: float | None = None):
         super().__init__()
-        self.mel = torchaudio.transforms.MelSpectrogram(
-            sample_rate=sr, n_fft=n_fft, win_length=n_fft, hop_length=hop, n_mels=n_mels,
-            f_min=20.0, f_max=sr / 2, power=2.0, center=True)
+        self.n_fft, self.hop = n_fft, hop
+        n = torch.arange(n_fft, dtype=torch.float64)
+        k = torch.arange(n_fft // 2 + 1, dtype=torch.float64)[:, None]
+        win = torch.hann_window(n_fft, periodic=True, dtype=torch.float64)
+        ang = 2 * torch.pi * k * n / n_fft
+        basis = torch.cat([torch.cos(ang) * win, -torch.sin(ang) * win])[:, None, :]       # (2F, 1, n_fft)
+        self.register_buffer("basis", basis.float(), persistent=False)
+        fb = torchaudio.functional.melscale_fbanks(n_fft // 2 + 1, f_min, f_max or sr / 2, n_mels, sr,
+                                                   norm=None, mel_scale="htk")             # (F, n_mels)
+        self.register_buffer("fb", fb.T.contiguous().float(), persistent=False)
 
     def forward(self, wav: torch.Tensor) -> torch.Tensor:
-        return torch.log(self.mel(wav) + 1e-6)
+        single = wav.dim() == 1
+        x = torch.nn.functional.pad((wav[None] if single else wav)[:, None], (self.n_fft // 2, self.n_fft // 2),
+                                    mode="reflect")
+        spec = torch.nn.functional.conv1d(x, self.basis, stride=self.hop)                  # (B, 2F, frames)
+        f = spec.shape[1] // 2
+        power = spec[:, :f] ** 2 + spec[:, f:] ** 2
+        out = torch.log(torch.matmul(self.fb, power) + 1e-6)
+        return out[0] if single else out
 
 
 _LOGMEL: LogMel | None = None

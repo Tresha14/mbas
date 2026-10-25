@@ -1,0 +1,15 @@
+# VAD, random init. LibriSpeech (+ Common Voice) utterances with silences, mixed with recorded/synthetic noise.
+name: vad
+seed: 42
+model:
+  n_mels: 40
+  ch: 64
+data:
+  seconds: 8.0
+  train_items: 20000
+  workers: 6
+train:
+  epochs: 8
+  batch_size: 32
+  lr: 0.002
+  amp: true

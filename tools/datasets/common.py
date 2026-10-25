@@ -51,7 +51,7 @@ def rel(path: Path) -> str:
         return path.as_posix()
 
 
-def download(url: str, dest: Path, expected_size: int | None = None, retries: int = 5) -> Path:
+def download(url: str, dest: Path, expected_size: int | None = None, retries: int = 30) -> Path:
     """Resumable HTTP download (Range requests). Skips files that are already complete."""
     dest.parent.mkdir(parents=True, exist_ok=True)
     if dest.exists() and (expected_size is None or dest.stat().st_size == expected_size):
@@ -84,7 +84,7 @@ def download(url: str, dest: Path, expected_size: int | None = None, retries: in
             if attempt == retries:
                 raise
             print(f"  retry {attempt} for {dest.name}: {e}")
-            time.sleep(3 * attempt)
+            time.sleep(min(3 * attempt, 30))
     part.replace(dest)
     if expected_size is not None and dest.stat().st_size != expected_size:
         raise RuntimeError(f"{dest.name}: {dest.stat().st_size} bytes, expected {expected_size}")

@@ -1,0 +1,40 @@
+{
+  "model": "answer_quality",
+  "generated": "2026-10-25T19:01:37",
+  "source": "synthetic",
+  "test_answers": 473,
+  "transformer": {
+    "relevance_mae": 0.0672,
+    "relevance_r": 0.9477,
+    "quality_accuracy": 0.6913,
+    "quality_mae": 0.3907,
+    "quality_qwk": 0.8574,
+    "follow_up_f1": 0.8829,
+    "reason_macro_f1": 0.5485,
+    "star_f1": 0.9693,
+    "completeness_mae": 0.0723
+  },
+  "tfidf_baseline": {
+    "relevance_mae": 0.0719,
+    "relevance_r": 0.9248,
+    "quality_accuracy": 0.5814,
+    "quality_mae": 0.4546,
+    "quality_qwk": 0.7726,
+    "follow_up_f1": 0.8523,
+    "reason_macro_f1": 0.4981
+  },
+  "transformer_better": {
+    "relevance_mae": true,
+    "relevance_r": true,
+    "quality_accuracy": true,
+    "quality_mae": true,
+    "quality_qwk": true,
+    "follow_up_f1": true,
+    "reason_macro_f1": true
+  },
+  "params": 3520018,
+  "off_topic_test": {
+    "mean_relevance": 0.0982,
+    "flagged_follow_up": 0.9662
+  }
+}

@@ -1,0 +1,17 @@
+# Disfluency CRNN, random init. SEP-28k 3 s clips (split by episode) + our hesitation spans when labelled.
+name: disfluency
+seed: 42
+model:
+  width: 32
+  hidden: 96
+  dropout: 0.3
+data:
+  workers: 6
+  limit: null
+train:
+  epochs: 25
+  batch_size: 64
+  lr: 0.001
+  weight_decay: 0.0001
+  warmup_steps: 300
+  amp: true

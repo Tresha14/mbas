@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mbas.local/schemas/behaviour.json",
+  "title": "MBAS per-answer behaviour",
+  "description": "Output of ml/behaviour/answer_behaviour.py for one answer (Stage 7). Times are seconds on the session clock.",
+  "type": "object",
+  "required": ["schema_version", "answer_id", "timing", "prosody", "text_hesitation", "audio_hesitation"],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "answer_id": {"type": "string", "description": "<session>_A<order>"},
+    "timing": {
+      "type": "object",
+      "description": "Pause model (VAD on the candidate track + question end from the interviewer track)",
+      "properties": {
+        "response_latency_s": {"type": "number", "description": "question end -> first candidate speech"},
+        "answer_start_s": {"type": ["number", "null"]},
+        "answer_duration_s": {"type": "number"},
+        "speech_s": {"type": "number"},
+        "long_pause_count": {"type": "integer", "description": "mid-answer silences > 1 s"},
+        "long_pause_total_s": {"type": "number"},
+        "mean_pause_duration_s": {"type": "number"},
+        "pause_ratio": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "prosody": {
+      "type": "object",
+      "properties": {
+        "duration_s": {"type": "number"},
+        "speaking_rate_wpm": {"type": "number"},
+        "articulation_rate_wpm": {"type": "number", "description": "words per minute of speech time"},
+        "pitch_mean_hz": {"type": "number"},
+        "pitch_std_hz": {"type": "number"},
+        "pitch_range_hz": {"type": "number"},
+        "monotony_index": {"type": "number", "minimum": 0, "maximum": 1, "description": "1 = < 1 semitone pitch variation"},
+        "energy_mean_db": {"type": "number"},
+        "energy_std_db": {"type": "number"},
+        "volume_consistency": {"type": "number", "minimum": 0, "maximum": 1},
+        "syllable_rate": {"type": "number", "description": "energy peaks per second of speech"},
+        "speech_rate_variability": {"type": "number", "description": "coefficient of variation of the 2 s syllable rate"}
+      }
+    },
+    "text_hesitation": {
+      "type": "object",
+      "description": "Rules on the transcript (ml/behaviour/text_hesitation.py)",
+      "properties": {
+        "word_count": {"type": "integer"},
+        "filler_count": {"type": "integer"},
+        "repetition_count": {"type": "integer"},
+        "restart_count": {"type": "integer"},
+        "hedge_count": {"type": "integer"},
+        "self_correction_count": {"type": "integer"},
+        "filler_rate_per_100w": {"type": "number"},
+        "disfluency_rate_per_100w": {"type": "number"},
+        "hedge_rate_per_100w": {"type": "number"}
+      }
+    },
+    "audio_hesitation": {
+      "type": "object",
+      "description": "Disfluency CRNN events counted over 3 s windows (filler, repetition, prolongation, block)",
+      "properties": {
+        "filler_events": {"type": "integer"},
+        "repetition_events": {"type": "integer"},
+        "prolongation_count": {"type": "integer"},
+        "block_count": {"type": "integer"}
+      }
+    },
+    "speaking_pattern": {
+      "type": ["object", "null"],
+      "properties": {
+        "label": {"enum": ["confident", "balanced", "hesitant", "rushed", "monotone"]},
+        "probabilities": {"type": "object", "additionalProperties": {"type": "number"}}
+      }
+    },
+    "hesitation_index": {
+      "type": ["object", "null"],
+      "properties": {
+        "value": {"type": "number", "minimum": 0, "maximum": 100},
+        "top_contributors": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

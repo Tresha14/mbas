@@ -1,0 +1,22 @@
+{
+  "model": "headpose",
+  "generated": "2026-10-25T19:09:30",
+  "test_faces": 1050,
+  "test_mae_deg": {
+    "yaw": 10.753,
+    "pitch": 10.697,
+    "roll": 5.484
+  },
+  "baseline_mean_pose_mae_deg": {
+    "yaw": 26.008,
+    "pitch": 16.434,
+    "roll": 10.485
+  },
+  "label_source": "solvePnP on RetinaFace landmarks (geometric pseudo-labels)",
+  "params": 591331,
+  "cpu_latency_torch_4threads": {
+    "median_ms": 7.669,
+    "p90_ms": 9.177,
+    "fps": 130.4
+  }
+}

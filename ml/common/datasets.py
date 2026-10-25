@@ -1,6 +1,6 @@
 """PyTorch Dataset classes for every model. All read person-wise splits from data/splits/.
 
-  FaceDataset            WIDER FACE (+ our labelled frames)       image 128x128, boxes
+  FaceDataset            WIDER FACE (+ RetinaFace landmarks)      image 128x128, boxes, 5 key points
   GazeDataset            MPIIGaze normalised eye crops             2 x (1, 36, 60), head pose, gaze
   EngagementClipDataset  DAiSEE clips / our 5 s windows            (16, 3, 112, 112), engagement 3-class
   VADDataset             LibriSpeech mixtures + noise              waveform, 10 ms frame labels
@@ -61,14 +61,22 @@ def pad_1d(seqs: list[torch.Tensor], value: float = 0.0) -> tuple[torch.Tensor, 
 
 # ---------------------------------------------------------------------------------------------- vision
 
-class FaceDataset(Dataset):
-    """WIDER FACE images letterboxed to `size`; boxes as normalised (x1, y1, x2, y2).
+N_KP = 5  # left eye, right eye, nose, left mouth corner, right mouth corner (RetinaFace order)
+FLIP_KP = [1, 0, 2, 4, 3]
 
+
+class FaceDataset(Dataset):
+    """WIDER FACE images letterboxed to `size`.
+
+    Returns image (3, size, size), boxes (N, 4) normalised x1 y1 x2 y2, keypoints (N, 5, 2) normalised and
+    kp_mask (N,) = 1 where the face has RetinaFace landmarks (train images only).
     Splits: WIDER train -> train (90%) / val (10%, by image hash); WIDER val -> test.
     Faces smaller than `min_face` px in the original image and 'invalid' faces are dropped.
     """
 
     def __init__(self, split: str, size: int = 128, augment: bool = False, min_face: int = 10, limit: int | None = None):
+        import json
+
         m = manifest("wider_face")
         if split == "test":
             m = m[m.split_official == "val"]
@@ -76,14 +84,18 @@ class FaceDataset(Dataset):
             m = m[m.split_official == "train"]
             is_val = m.item_id.map(lambda k: _hash01(k, "face") < 0.1)
             m = m[is_val] if split == "val" else m[~is_val]
-        import json
-
         self.items = []
+        has_lm = "landmarks" in m.columns
         for r in m.itertuples(index=False):
-            boxes = np.array([b[:4] for b in json.loads(r.boxes) if b[7] == 0 and min(b[2], b[3]) >= min_face],
-                             dtype=np.float32).reshape(-1, 4)
-            if len(boxes) or split != "train":
-                self.items.append((r.path, boxes))
+            lm = json.loads(r.landmarks) if has_lm else []
+            if lm:   # RetinaFace boxes + landmarks (same faces as the official train boxes)
+                faces = np.array([f[:14] + [f[14]] for f in lm if min(f[2], f[3]) >= min_face], np.float32)
+            else:
+                faces = np.array([b[:4] + [0.0] * 10 + [0.0] for b in json.loads(r.boxes)
+                                  if b[7] == 0 and min(b[2], b[3]) >= min_face], np.float32)
+            faces = faces.reshape(-1, 15)
+            if len(faces) or split != "train":
+                self.items.append((r.path, faces))
         if limit:
             self.items = self.items[:limit]
         self.size, self.augment = size, augment
@@ -95,55 +107,64 @@ class FaceDataset(Dataset):
     def __getitem__(self, i: int):
         import cv2
 
-        path, boxes = self.items[i]
+        path, faces = self.items[i]
         img = cv2.cvtColor(cv2.imread(str(abspath(path))), cv2.COLOR_BGR2RGB)
-        h, w = img.shape[:2]
-        boxes = boxes.copy()
+        f = faces.copy()
         if self.augment:
-            img, boxes = self._random_crop(img, boxes)
-            h, w = img.shape[:2]
+            img, f = self._random_crop(img, f)
             img = self.aug.photometric(img)
             if self.aug.flip():
+                w = img.shape[1]
                 img = np.ascontiguousarray(img[:, ::-1])
-                boxes[:, 0] = w - boxes[:, 0] - boxes[:, 2]
+                f[:, 0] = w - f[:, 0] - f[:, 2]
+                kp = f[:, 4:14].reshape(-1, 5, 2)
+                kp[:, :, 0] = w - kp[:, :, 0]
+                f[:, 4:14] = kp[:, FLIP_KP].reshape(-1, 10)
         lb, s, (px, py) = letterbox(img, self.size)
-        xyxy = np.stack([boxes[:, 0] * s + px, boxes[:, 1] * s + py,
-                         (boxes[:, 0] + boxes[:, 2]) * s + px, (boxes[:, 1] + boxes[:, 3]) * s + py], 1) / self.size
+        b = f[:, :4]
+        xyxy = np.stack([b[:, 0] * s + px, b[:, 1] * s + py, (b[:, 0] + b[:, 2]) * s + px,
+                         (b[:, 1] + b[:, 3]) * s + py], 1) / self.size
+        kp = f[:, 4:14].reshape(-1, 5, 2).copy()
+        kp[:, :, 0] = (kp[:, :, 0] * s + px) / self.size
+        kp[:, :, 1] = (kp[:, :, 1] * s + py) / self.size
+        mask = f[:, 14].copy()
         xyxy = np.clip(xyxy, 0, 1).reshape(-1, 4)
         keep = ((xyxy[:, 2] - xyxy[:, 0]) * self.size >= 2) & ((xyxy[:, 3] - xyxy[:, 1]) * self.size >= 2)
-        return torch.from_numpy(normalize(lb)), torch.from_numpy(xyxy[keep].astype(np.float32))
+        mask[(kp < 0).any(axis=(1, 2)) | (kp > 1).any(axis=(1, 2))] = 0   # landmark cut off by the crop
+        return (torch.from_numpy(normalize(lb)), torch.from_numpy(xyxy[keep].astype(np.float32)),
+                torch.from_numpy(kp[keep].astype(np.float32)), torch.from_numpy(mask[keep].astype(np.float32)))
 
-    def _random_crop(self, img: np.ndarray, boxes: np.ndarray, tries: int = 10):
-        """Square crop around a random face (scale jitter) so faces of webcam size are common."""
+    def _random_crop(self, img: np.ndarray, faces: np.ndarray, tries: int = 10):
+        """Square crop around a random face (scale jitter) so webcam-sized faces dominate training."""
         h, w = img.shape[:2]
         rng = self.aug.rng
-        if not len(boxes):
-            return img, boxes
+        if not len(faces):
+            return img, faces
         for _ in range(tries):
-            b = boxes[rng.integers(len(boxes))]
-            side = max(b[2], b[3]) * rng.uniform(1.5, 6.0)
-            side = min(side, w, h)
-            cx, cy = b[0] + b[2] / 2 + rng.uniform(-0.3, 0.3) * side, b[1] + b[3] / 2 + rng.uniform(-0.3, 0.3) * side
+            b = faces[rng.integers(len(faces))]
+            side = min(max(b[2], b[3]) * rng.uniform(1.4, 6.0), w, h)
+            cx = b[0] + b[2] / 2 + rng.uniform(-0.3, 0.3) * side
+            cy = b[1] + b[3] / 2 + rng.uniform(-0.3, 0.3) * side
             x0 = int(np.clip(cx - side / 2, 0, w - side))
             y0 = int(np.clip(cy - side / 2, 0, h - side))
             x1, y1 = x0 + int(side), y0 + int(side)
-            centres = np.stack([boxes[:, 0] + boxes[:, 2] / 2, boxes[:, 1] + boxes[:, 3] / 2], 1)
-            inside = (centres[:, 0] > x0) & (centres[:, 0] < x1) & (centres[:, 1] > y0) & (centres[:, 1] < y1)
+            cxs, cys = faces[:, 0] + faces[:, 2] / 2, faces[:, 1] + faces[:, 3] / 2
+            inside = (cxs > x0) & (cxs < x1) & (cys > y0) & (cys < y1)
             if inside.any():
-                nb = boxes[inside].copy()
-                nb[:, 0] -= x0
-                nb[:, 1] -= y0
-                nb[:, 2] = np.minimum(nb[:, 0] + nb[:, 2], x1 - x0) - np.maximum(nb[:, 0], 0)
-                nb[:, 3] = np.minimum(nb[:, 1] + nb[:, 3], y1 - y0) - np.maximum(nb[:, 1], 0)
-                nb[:, 0] = np.maximum(nb[:, 0], 0)
-                nb[:, 1] = np.maximum(nb[:, 1], 0)
-                return img[y0:y1, x0:x1], nb
-        return img, boxes
+                nf = faces[inside].copy()
+                bx0, by0 = np.maximum(nf[:, 0] - x0, 0), np.maximum(nf[:, 1] - y0, 0)
+                bx1 = np.minimum(nf[:, 0] + nf[:, 2] - x0, x1 - x0)
+                by1 = np.minimum(nf[:, 1] + nf[:, 3] - y0, y1 - y0)
+                nf[:, 0], nf[:, 1], nf[:, 2], nf[:, 3] = bx0, by0, bx1 - bx0, by1 - by0
+                nf[:, 4:14:2] -= x0
+                nf[:, 5:14:2] -= y0
+                return img[y0:y1, x0:x1], nf
+        return img, faces
 
 
 def face_collate(batch):
     imgs = torch.stack([b[0] for b in batch])
-    return imgs, [b[1] for b in batch]
+    return imgs, [b[1] for b in batch], [b[2] for b in batch], [b[3] for b in batch]
 
 
 class GazeDataset(Dataset):
@@ -487,21 +508,28 @@ def answer_collate(batch):
     return out
 
 
-# Per-answer features by modality. In the live system these come from our Stage 4-8 models;
-# for the synthetic dataset they are the simulated measurements in answers.csv.
+# Per-answer features by modality - only features our live pipeline computes:
+#   vision        Stage 4-5 window signals aggregated over the answer
+#   prosody       ml/behaviour/prosody.py (+ MFCC means)
+#   hesitation    pause model + text rules + disfluency CRNN
+#   content       answer-quality transformer outputs (out-of-fold for training) + transcript statistics
+#   conversation  conversation analyser
+# Simulator-internal columns (key_points_covered, vague/off-topic sentence counts, contradiction flag, jitter,
+# shimmer, confusion level) are deliberately NOT used.
 FUSION_FEATURES: dict[str, list[str]] = {
     "vision": ["mean_on_screen_ratio", "mean_attention_score", "engaged_window_fraction", "disengaged_window_fraction",
                "mean_blink_rate_per_min", "total_glance_away", "mean_gaze_yaw_std_deg", "mean_head_yaw_std_deg",
-               "reading_pattern_detected", "mean_confusion_level"],
+               "reading_pattern_detected"],
     "prosody": ["speaking_rate_wpm", "articulation_rate_wpm", "pitch_mean_hz", "pitch_std_hz", "pitch_range_hz",
                 "monotony_index", "energy_mean_db", "energy_std_db", "volume_consistency", "speech_rate_variability",
-                "jitter_pct", "shimmer_pct", "snr_db"] + [f"mfcc_{i}_mean" for i in range(1, 14)],
+                "snr_db"] + [f"mfcc_{i}_mean" for i in range(1, 14)],
     "hesitation": ["response_latency_s", "long_pause_count", "long_pause_total_s", "pause_ratio",
                    "mean_pause_duration_s", "filler_count", "filler_rate_per_100w", "repetition_count",
                    "restart_count", "hedge_count", "prolongation_count", "block_count", "disfluency_rate_per_100w"],
-    "content": ["answer_duration_s", "word_count", "key_points_covered", "vague_sentence_count",
-                "off_topic_sentence_count", "contains_contradiction", "keyword_overlap", "asr_confidence_mean",
-                "question_difficulty"],
+    "content": ["answer_duration_s", "word_count", "keyword_overlap", "asr_confidence_mean", "question_difficulty",
+                "ans_relevance", "ans_quality", "ans_completeness", "ans_star_count", "ans_follow_up_p",
+                "ans_reason_vague", "ans_reason_low_confidence", "ans_reason_attention_drop",
+                "ans_reason_topic_not_covered", "ans_reason_contradiction"],
     "conversation": ["interrupted_by_interviewer", "overlap_s"],
 }
 FUSION_TARGETS = ["communication_effectiveness", "clarity_score", "confidence_score", "engagement_score",
@@ -509,13 +537,23 @@ FUSION_TARGETS = ["communication_effectiveness", "clarity_score", "confidence_sc
 
 
 def fusion_table(source: str = "synthetic") -> pd.DataFrame:
+    """Per-answer feature table + labels. Answer-model features are merged when they have been computed
+    (python -m ml.fusion.answer_features); missing ones stay NaN (-> 0 after standardisation)."""
+    feats = LABELS.parent / "features"
     if source != "synthetic":
-        p = LABELS.parent / "features" / f"answers_{source}.parquet"
+        p = feats / f"answers_{source}.parquet"
         if not p.exists():
             raise FileNotFoundError(f"{p} missing: run the Stage 8 feature assembler")
         t = pd.read_parquet(p)
     else:
         t = pd.read_csv(SYNTHETIC / "interview" / "answers.csv")
+    am = feats / f"answer_model_{source}.parquet"
+    if am.exists() and "ans_relevance" not in t:
+        t = t.merge(pd.read_parquet(am), on="answer_id", how="left")
+    for cols in FUSION_FEATURES.values():
+        for c in cols:
+            if c not in t:
+                t[c] = np.nan
     sp = split_of(source)
     return t.assign(split=t.session_id.map(sp))
 

@@ -1,0 +1,22 @@
+# Face + 5-landmark detector (BlazeFace-style), trained from random init on WIDER FACE + RetinaFace landmarks.
+name: face_detector
+seed: 42
+model:
+  size: 128
+  width: 2.0
+data:
+  min_face: 10          # px in the original image
+  workers: 6
+  limit: null           # e.g. 500 for a smoke test
+train:
+  epochs: 60
+  batch_size: 64
+  lr: 0.002
+  weight_decay: 0.0001
+  warmup_steps: 500
+  kp_weight: 0.5
+  amp: true
+eval:
+  score_thr: 0.5
+  iou_thr: 0.3
+  large_face: 0.08      # evaluate faces >= 8% of the 128 px input (webcam faces are 20-60%)

@@ -1,0 +1,22 @@
+# Engagement CNN-GRU. Stage A: pre-train on DAiSEE. Stage B: fine-tune on our labelled windows.
+name: engagement
+seed: 42
+model:
+  width: 32
+  dim: 128
+  hidden: 128
+  dropout: 0.3
+data:
+  n_frames: 16
+  size: 112
+  workers: 6
+  limit: null
+train:
+  epochs: 15
+  finetune_epochs: 10
+  batch_size: 16
+  lr: 0.0005
+  finetune_lr: 0.0002
+  weight_decay: 0.0001
+  aux_weight: 0.3
+  amp: true

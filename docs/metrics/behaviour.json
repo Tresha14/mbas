@@ -1,0 +1,55 @@
+{
+  "model": "behaviour",
+  "generated": "2026-10-25T16:29:15",
+  "source": "synthetic",
+  "train_answers": 2255,
+  "test_answers": 473,
+  "speaking_pattern": {
+    "macro_f1": 0.8098,
+    "per_class_f1": {
+      "confident": 0.7895,
+      "balanced": 0.8128,
+      "hesitant": 0.805,
+      "rushed": 0.8548,
+      "monotone": 0.7869
+    },
+    "majority_baseline_macro_f1": 0.1129
+  },
+  "hesitation_index": {
+    "weighted_sum_mae": 4.317,
+    "weighted_sum_r": 0.94,
+    "mlp_mae": 2.796,
+    "mean_baseline_mae": 13.84,
+    "weights": {
+      "response_latency_s": 0.1088000014424324,
+      "long_pause_count": 0.05640000104904175,
+      "long_pause_total_s": 0.05649999901652336,
+      "pause_ratio": 0.07460000365972519,
+      "filler_rate_per_100w": 0.33070001006126404,
+      "repetition_count": 0.10249999910593033,
+      "restart_count": 0.09019999951124191,
+      "hedge_rate_per_100w": 0.05260000005364418,
+      "prolongation_count": 0.11860000342130661,
+      "block_count": 0.07739999890327454,
+      "disfluency_rate_per_100w": 0.2159000039100647
+    }
+  },
+  "text_rule_validation": {
+    "filler_count": {
+      "pearson_r": 0.8183,
+      "mae": 0.653
+    },
+    "repetition_count": {
+      "pearson_r": 0.9604,
+      "mae": 0.052
+    },
+    "restart_count": {
+      "pearson_r": 0.9434,
+      "mae": 0.089
+    },
+    "hedge_count": {
+      "pearson_r": 0.8684,
+      "mae": 0.533
+    }
+  }
+}

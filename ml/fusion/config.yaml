@@ -1,0 +1,19 @@
+# Multimodal fusion network, random init. Synthetic answers now; MIT Interview ratings + our labels when available.
+name: fusion
+seed: 42
+source: synthetic
+model:
+  d: 64
+  heads: 4
+  dropout: 0.3
+train:
+  epochs: 150
+  batch_size: 64
+  lr: 0.001
+  weight_decay: 0.001
+  modality_dropout: 0.15     # randomly hide a modality during training (robust to camera off / bad audio)
+  follow_up_weight: 1.0
+  reason_weight: 0.5
+explain:
+  n_perm: 48
+  examples: 25

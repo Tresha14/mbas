@@ -171,12 +171,25 @@ def test_face_dataset_targets(tmp_path, monkeypatch):
     root.mkdir()
     img = tmp_path / "a.jpg"
     cv2.imwrite(str(img), np.zeros((200, 400, 3), np.uint8))
+    lm = [[100, 50, 40, 40, 110, 60, 130, 60, 120, 70, 112, 80, 128, 80, 1.0]]
     pd.DataFrame([{"item_id": "val/a.jpg", "subject_id": "e", "split_official": "val", "path": str(img),
-                   "boxes": json.dumps([[100, 50, 40, 40, 0, 0, 0, 0, 0, 0], [0, 0, 5, 5, 0, 0, 0, 0, 0, 0]])}]
+                   "boxes": json.dumps([[100, 50, 40, 40, 0, 0, 0, 0, 0, 0], [0, 0, 5, 5, 0, 0, 0, 0, 0, 0]]),
+                   "landmarks": "[]"},
+                  {"item_id": "train/b.jpg", "subject_id": "e", "split_official": "train", "path": str(img),
+                   "boxes": json.dumps([[100, 50, 40, 40, 0, 0, 0, 0, 0, 0]]), "landmarks": json.dumps(lm)}]
                  ).to_parquet(root / "manifest.parquet")
     monkeypatch.setattr(D, "PUBLIC", tmp_path)
     ds = D.FaceDataset("test", size=128)
-    x, boxes = ds[0]
+    x, boxes, kp, mask = ds[0]
     assert x.shape == (3, 128, 128) and boxes.shape == (1, 4)      # 5 px face dropped (min_face 10)
+    assert kp.shape == (1, 5, 2) and mask.tolist() == [0.0]         # val images have no landmarks
     # 400 px wide -> scale 0.32, pad_y = (128 - 64) / 2 = 32
     assert boxes[0].tolist() == pytest.approx([100 * .32 / 128, (50 * .32 + 32) / 128, 140 * .32 / 128, (90 * .32 + 32) / 128], abs=1e-3)
+    tr = D.FaceDataset("train", size=128, augment=True)
+    tr.items = [it for it in tr.items if it[0] == str(img)][:1]
+    for _ in range(5):  # crop + flip keep landmarks inside their face box
+        x, boxes, kp, mask = tr[0]
+        if mask[0] > 0:
+            b = boxes[0]
+            assert (kp[0, :, 0] >= b[0] - 1e-3).all() and (kp[0, :, 0] <= b[2] + 1e-3).all()
+            assert kp[0, 0, 0] < kp[0, 1, 0]          # left eye stays left after a flip

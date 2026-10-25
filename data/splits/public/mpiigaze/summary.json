@@ -1,0 +1,20 @@
+{
+  "source": "public/mpiigaze",
+  "seed": 42,
+  "ratios": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "participants": {
+    "train": 11,
+    "val": 2,
+    "test": 2
+  },
+  "sessions": {
+    "train": 185979,
+    "val": 9604,
+    "test": 18075
+  },
+  "leakage_problems": []
+}

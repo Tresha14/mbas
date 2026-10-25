@@ -1,0 +1,7 @@
+{
+  "answer_quality": {
+    "file": "answer_quality.onnx",
+    "mb": 14.21,
+    "max_abs_diff_vs_torch": 2e-06
+  }
+}
