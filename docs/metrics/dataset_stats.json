@@ -1,25 +1,17 @@
 {
   "generated": "2026-10-25",
   "recorded": {
-    "sessions": 1,
-    "participants": 1,
-    "hours": 0.035,
-    "mean_session_min": 2.11,
-    "answered_questions": 2,
-    "windows": 49,
+    "sessions": 0,
+    "participants": 0,
+    "hours": 0.0,
+    "mean_session_min": 0.0,
+    "answered_questions": 0,
+    "windows": 0,
     "demographics": {
-      "gender": {
-        "female": 1
-      },
-      "age_band": {
-        "18-24": 1
-      },
-      "accent": {
-        "south_indian": 1
-      },
-      "glasses": {
-        "True": 1
-      }
+      "gender": {},
+      "age_band": {},
+      "accent": {},
+      "glasses": {}
     },
     "labels": {
       "labelled_windows": 0,
@@ -35,12 +27,12 @@
         "test": 0.15
       },
       "participants": {
-        "train": 1,
+        "train": 0,
         "val": 0,
         "test": 0
       },
       "sessions": {
-        "train": 1,
+        "train": 0,
         "val": 0,
         "test": 0
       },

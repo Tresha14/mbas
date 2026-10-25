@@ -148,6 +148,8 @@ Times are seconds from the recording start (shown on the interviewer page).
 - Deletion request: delete `data/raw/<session_id>/`, the session's clips under `data/processed/labelstudio/media/`,
   its tasks in Label Studio and its rows in `data/processed/labels/`, then re-run `tools/make_splits.py` and
   `tools/dataset_stats.py`. Note the deletion date in the session log.
+- Test runs or sessions that must not be used: put an `exclude.txt` (one line: the reason) in the session folder.
+  Every Stage 2 tool skips it; the data stays until it is deleted properly.
 - Only aggregated numbers and anonymised plots go into reports. Any face image in a report needs separate written
   permission.
 - Delete all raw recordings within 12 months of the project's end.

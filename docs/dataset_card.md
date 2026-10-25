@@ -6,8 +6,8 @@ Multimodal Behavioural Analysis System: mock interviews recorded with our own re
 
 ## Stage 2 checklist
 
-- [ ] At least 60 sessions by 30+ participants (now 1 sessions, 1 participants)
-- [ ] All sessions labelled; 20% double-labelled, kappa reported (now 0/1 labelled, 0% double-labelled)
+- [ ] At least 60 sessions by 30+ participants (now 0 sessions, 0 participants)
+- [ ] All sessions labelled; 20% double-labelled, kappa reported (now 0/0 labelled, 0% double-labelled)
 - [ ] Public datasets downloaded and converted (2/9)
 - [x] Person-wise splits and dataset card in docs/
 
@@ -15,12 +15,12 @@ Multimodal Behavioural Analysis System: mock interviews recorded with our own re
 
 | | |
 | --- | ---: |
-| Participants | 1 |
-| Interview sessions | 1 |
-| Interview hours | 0.035 |
-| Mean session length (min) | 2.11 |
-| Answered questions | 2 |
-| 5 s windows (2.5 s hop) | 49 |
+| Participants | 0 |
+| Interview sessions | 0 |
+| Interview hours | 0.0 |
+| Mean session length (min) | 0.0 |
+| Answered questions | 0 |
+| 5 s windows (2.5 s hop) | 0 |
 | Labelled windows | 0 |
 | Labelled answers | 0 |
 
@@ -28,7 +28,7 @@ Multimodal Behavioural Analysis System: mock interviews recorded with our own re
 
 | Split | Participants | Sessions |
 | --- | ---: | ---: |
-| train | 1 | 1 |
+| train | 0 | 0 |
 | val | 0 | 0 |
 | test | 0 | 0 |
 
@@ -44,27 +44,19 @@ _no double-labelled items yet_
 
 **gender**
 
-| gender | Count |
-| --- | ---: |
-| female | 1 |
+_none yet_
 
 **age_band**
 
-| age_band | Count |
-| --- | ---: |
-| 18-24 | 1 |
+_none yet_
 
 **accent**
 
-| accent | Count |
-| --- | ---: |
-| south_indian | 1 |
+_none yet_
 
 **glasses**
 
-| glasses | Count |
-| --- | ---: |
-| True | 1 |
+_none yet_
 
 
 ## Synthetic dataset (mbas_synthetic_dataset v1.0)

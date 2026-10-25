@@ -112,8 +112,16 @@ def load_session(session_dir: str | Path) -> SessionIndex:
     return idx
 
 
+EXCLUDE_MARKER = "exclude.txt"
+
+
 def find_sessions(raw_dir: str | Path) -> list[Path]:
-    """Recorded session folders (have meta.json + timeline.json); skips the synthetic dataset and public data."""
+    """Recorded session folders (have meta.json + timeline.json); skips the synthetic dataset and public data.
+
+    A session with an exclude.txt file (one line saying why: test run, withdrawn consent, ...) is left out of
+    labelling, splits and statistics without deleting its data.
+    """
     raw = Path(raw_dir)
     return sorted(p for p in raw.iterdir()
-                  if p.is_dir() and (p / "meta.json").exists() and (p / "timeline.json").exists())
+                  if p.is_dir() and (p / "meta.json").exists() and (p / "timeline.json").exists()
+                  and not (p / EXCLUDE_MARKER).exists())

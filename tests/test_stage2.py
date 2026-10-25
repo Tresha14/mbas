@@ -69,6 +69,13 @@ def test_windows_and_answers(tmp_path):
     assert s.track_offsets_s == {"candidate_webcam": 0.2, "candidate_mic": 0.1}
 
 
+def test_excluded_sessions_are_skipped(tmp_path):
+    a = _session(tmp_path, dur_s=10)
+    b = _session(tmp_path, dur_s=11)
+    (b / "exclude.txt").write_text("test run")
+    assert session_index.find_sessions(tmp_path) == [a]
+
+
 def test_unpaired_events_are_ignored():
     ev = [{"type": "ask", "question_id": "Q1", "t_ms": 0}, {"type": "ask", "question_id": "Q2", "t_ms": 1000},
           {"type": "answer_end", "question_id": "Q2", "t_ms": 3000}, {"type": "answer_end", "question_id": "Q9", "t_ms": 4000}]
