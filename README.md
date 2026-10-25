@@ -139,7 +139,8 @@ Documents: `docs/data_protocol.md` (how to run a session, consent text, storage 
 
 | Step | Tool | Output |
 | --- | --- | --- |
-| Clips + tasks | `tools/import_to_labelstudio.py` | `data/processed/labelstudio/{media,tasks}`; 5 s window clips (webcam + candidate mic) and per-answer audio/video |
+| Clips + tasks | `tools/import_to_labelstudio.py` | `data/processed/labelstudio/{media,tasks}`; one timeline task per session (mark exceptions only), per-answer audio/video; `--per-window` adds 5 s window clips |
+| Weak labels | `tools/session_log.py` | windows inside the scripted segments of `data/raw/session_log.csv` + calibration are labelled automatically |
 | Double labelling | same | 20% of sessions (at least one) go to the `(double-labelled)` projects; assignment kept in `assignment.json` |
 | Export | `tools/export_labels.py --pull` | `data/processed/labels/recorded/{windows,answers,hesitation_events}.parquet` + `*_annotations.parquet` (all annotators) |
 | Synthetic labels | `tools/synthetic_to_labels.py` | same schema in `data/processed/labels/synthetic/` |

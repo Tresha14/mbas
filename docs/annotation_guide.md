@@ -7,12 +7,21 @@ and write the case in the team chat so the guide can be updated.
 
 ## 1. Workflow
 
+Default (fast) workflow, about 15 minutes per 12-minute session:
+
 | Project | One task is | Who labels |
 | --- | --- | --- |
-| `MBAS windows` | one 5 s window of the candidate webcam (with candidate audio) | one annotator |
-| `MBAS windows (double-labelled)` | same, for the 20% overlap sessions | **both** annotators, independently |
+| `MBAS sessions (timeline)` | the whole session video: draw spans for **exceptions only** (section 6) | one annotator |
+| `MBAS sessions (timeline, double-labelled)` | same, for the 20% overlap sessions | **both** annotators, independently |
 | `MBAS answers` | one question + answer (candidate mic audio + small video) | one annotator |
 | `MBAS answers (double-labelled)` | same, overlap sessions | **both** annotators, independently |
+
+Transcripts are typed only when the answer task header says `transcript: REQUIRED` (a third of the sessions plus
+every double-labelled one). Windows inside the scripted segments of the session log get labels automatically
+(annotator `scripted`), so fill in `data/raw/session_log.csv` carefully.
+
+The slower per-window projects (`MBAS windows ...`, one task per 5 s window) exist for checking and are only created
+with `python -m tools.import_to_labelstudio --per-window --push`. Both give the same window labels.
 
 Rules:
 
@@ -136,6 +145,19 @@ applies, otherwise `no`. With `yes`, pick the **main** reason:
 | `attention_drop` | The candidate seemed distracted, looked away or read from somewhere during the answer. | Eyes on the phone during most of the answer. |
 | `topic_not_covered` | An important part of the question was not answered. | Asked "process vs thread, and when would you use each?", only defines a process. |
 | `contradiction` | The answer contradicts itself or an earlier answer. | "I led the team" then "I wasn't really involved in decisions." |
+
+## 6. Timeline labelling (sessions project)
+
+1. Play the session at 1.5x (2x once you are used to it). Keep your hand on the hotkeys: `o` off_screen,
+   `d` disengaged, `e` engaged.
+2. Draw a span only where the behaviour **differs from the default**:
+   - attention default = `on_screen`: draw `off_screen` where the gaze is away from the screen (section 2.1);
+   - engagement default = `neutral`: draw `engaged` or `disengaged` spans (section 2.2).
+   Spans of different labels may overlap (for example `off_screen` and `disengaged` while looking at the phone).
+3. Span edges within about half a second are enough: a window takes a label only when the span covers more than
+   half of its 5 s.
+4. Short glances under 1 s need no span (they are `on_screen` by rule 2.1).
+5. Tick `face_often_not_visible`, `bad_video` or `unsure` when they apply to the session as a whole.
 
 ## 5. Quality control
 

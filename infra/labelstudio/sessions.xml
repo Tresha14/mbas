@@ -1,0 +1,22 @@
+<!--
+  MBAS fast labelling: one task = one whole session (candidate webcam + candidate mic,
+  16 fps proxy). Watch at 1.5-2x and draw spans ONLY for exceptions:
+    off_screen  -> everything not marked is on_screen
+    engaged / disengaged -> everything not marked is neutral
+  tools/export_labels.py turns the spans into 5 s window labels (> 50% overlap rule).
+  Definitions: docs/annotation_guide.md, sections 2 and 6.
+-->
+<View>
+  <Header value="$session_id   ($duration_s s)   scripted: $scripted"/>
+  <TimelineLabels name="timeline" toName="video">
+    <Label value="off_screen" background="#ef4444" hotkey="o"/>
+    <Label value="disengaged" background="#6b7280" hotkey="d"/>
+    <Label value="engaged" background="#10b981" hotkey="e"/>
+  </TimelineLabels>
+  <Video name="video" value="$video" frameRate="16" timelineHeight="140"/>
+  <Choices name="flags" toName="video" choice="multiple" showInline="true">
+    <Choice value="face_often_not_visible"/>
+    <Choice value="bad_video"/>
+    <Choice value="unsure"/>
+  </Choices>
+</View>

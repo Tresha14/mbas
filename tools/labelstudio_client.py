@@ -21,6 +21,9 @@ MEDIA_PREFIX = "mbas/media"
 
 PROJECTS = {
     # key: (title, config file, maximum annotations per task)
+    # default (fast) workflow: whole-session timeline + answers; the per-window projects are optional
+    "sessions": ("MBAS sessions (timeline)", "sessions.xml", 1),
+    "sessions_double": ("MBAS sessions (timeline, double-labelled)", "sessions.xml", 2),
     "windows": ("MBAS windows", "windows.xml", 1),
     "windows_double": ("MBAS windows (double-labelled)", "windows.xml", 2),
     "answers": ("MBAS answers", "answers.xml", 1),

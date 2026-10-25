@@ -87,7 +87,9 @@ def test_unpaired_events_are_ignored():
 
 def test_build_session_clips(tmp_path):
     s = session_index.load_session(_session(tmp_path / "raw", dur_s=12.0, media=True))
-    tasks = imp.build_session(s, tmp_path / "ls")
+    tasks = imp.build_session(s, tmp_path / "ls", per_window=True, transcribe=False)
+    assert tasks["sessions"][0]["data"]["video"].endswith(f"{s.session_id}/proxy.webm")
+    assert tasks["answers"][0]["data"]["transcribe"] == "skip"
     assert len(tasks["windows"]) == 3 and len(tasks["answers"]) == 2
     media = tmp_path / "ls" / "media" / s.session_id
     for i in range(3):
@@ -135,6 +137,34 @@ def test_export_real_labelstudio_json(tmp_path):
     assert counts["windows.parquet"] == 4 and counts["answers.parquet"] == 2
     assert counts["hesitation_events.parquet"] == 2
     assert (tmp_path / "windows_annotations.parquet").exists()
+
+
+def test_timeline_spans_to_windows(tmp_path):
+    assert export_labels.window_label_from_spans([("off_screen", 0, 2.4)], 0, 5) == ("on_screen", "neutral")
+    assert export_labels.window_label_from_spans([("off_screen", 0, 2.6), ("engaged", 1, 5)], 0, 5) == \
+        ("off_screen", "engaged")
+    d = _session(tmp_path)
+    task = {"data": {"session_id": d.name, "participant_id": "P001", "duration_s": 12.0, "fps": 16},
+            "annotations": [{"id": 1, "completed_by": 3, "result": [
+                {"from_name": "timeline", "type": "timelinelabels",
+                 "value": {"ranges": [{"start": 81, "end": 160}], "timelinelabels": ["disengaged"]}}]}]}
+    df = export_labels.parse_sessions([task], {3: "ann@x"}, raw_dir=tmp_path)
+    assert df.engagement_label.tolist() == ["neutral", "neutral", "disengaged"]   # frames 81-160 = 5-10 s
+    assert df.answer_id.iloc[0] == f"{d.name}_A01" and (df.annotator == "ann@x").all()
+
+
+def test_scripted_weak_labels_rank_last(tmp_path):
+    d = _session(tmp_path, dur_s=30)
+    (tmp_path / "session_log.csv").write_text(
+        "session_id,look_phone_start_s,look_phone_end_s,look_camera_start_s,look_camera_end_s\n"
+        f"{d.name},10,20,,\n")
+    weak = export_labels.scripted_labels({d.name}, raw_dir=tmp_path)
+    assert weak.window_id.str[-4:].tolist() == ["0004", "0005", "0006"]          # 10-15, 12.5-17.5, 15-20
+    assert (weak.attention_label == "off_screen").all() and (weak.annotator == "scripted").all()
+    human = weak.iloc[[0]].assign(annotator="ann@x", attention_label="on_screen")
+    ranked = export_labels.rank_windows(pd.concat([weak, human]))
+    first = ranked[ranked.annotation_rank == 0].set_index("window_id")
+    assert first.loc[weak.window_id.iloc[0], "annotator"] == "ann@x"
 
 
 def test_cancelled_annotations_are_dropped():

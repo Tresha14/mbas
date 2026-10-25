@@ -5,7 +5,7 @@
   Definitions and examples: docs/annotation_guide.md, sections 3 and 4.
 -->
 <View>
-  <Header value="$answer_id   [$category]   clip starts at $clip_t0_s s of the session"/>
+  <Header value="$answer_id   [$category]   clip starts at $clip_t0_s s of the session   transcript: $transcribe"/>
   <Text name="question" value="$question_text"/>
 
   <Header value="Hesitation spans: select a label, then drag on the waveform" size="5"/>
@@ -18,8 +18,8 @@
   <Audio name="audio" value="$audio" hotkey="space" sync="video"/>
   <Video name="video" value="$video" height="240" sync="audio"/>
 
-  <Header value="Manual transcript of the CANDIDATE only (verbatim, keep fillers: um, uh, matlab ...)" size="5"/>
-  <TextArea name="transcript" toName="audio" rows="5" editable="true" maxSubmissions="1" required="true"/>
+  <Header value="Manual transcript of the CANDIDATE only (verbatim, keep fillers: um, uh, matlab ...). Only when the header says transcript: REQUIRED" size="5"/>
+  <TextArea name="transcript" toName="audio" rows="5" editable="true" maxSubmissions="1"/>
 
   <Header value="Answer quality (1 = very poor, 5 = excellent)" size="5"/>
   <Rating name="quality" toName="audio" maxRating="5" required="true"/>

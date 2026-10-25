@@ -149,7 +149,8 @@ def compute(labels_dir: Path) -> dict:
         w = pd.read_parquet(wpath)
         res["windows"] = window_agreement(w)
         sessions = w.session_id.nunique()
-        multi = w.groupby("window_id").annotator.nunique()
+        human = w[w.annotator != "scripted"]  # weak labels from the session log are not a second annotator
+        multi = human.groupby("window_id").annotator.nunique()
         res["double_labelled_sessions"] = int(w[w.window_id.isin(multi[multi > 1].index)].session_id.nunique())
         res["sessions"] = int(sessions)
         res["double_labelled_fraction"] = round(res["double_labelled_sessions"] / max(sessions, 1), 4)

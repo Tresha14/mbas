@@ -1,15 +1,17 @@
 """Turn recorded sessions into Label Studio tasks (and optionally push them).
 
 For every session in data/raw/ that passes check_session and has consent:
-  1. a low-resolution proxy of the candidate webcam with the candidate mic,
-     aligned to the recording start, keyframe every 2.5 s;
-  2. one 5 s clip per window (2.5 s hop)        -> windows tasks;
-  3. one audio + video clip per answered question -> answers tasks.
+  1. a 360p 16 fps proxy of the candidate webcam with the candidate mic, aligned
+     to the recording start      -> one "sessions (timeline)" task: mark exceptions only;
+  2. one audio + video clip per answered question -> answers tasks;
+  3. with --per-window: one 5 s clip per window (2.5 s hop) for the slower per-window projects.
 
 20% of sessions (at least one) go to the "double-labelled" projects, which
 both annotators label completely; that overlap is used for Cohen's kappa.
-The assignment is stored in data/processed/labelstudio/assignment.json so it
-never changes when more sessions are added.
+A third of the sessions (plus every double-labelled one) need a manual transcript;
+the rest only get quality / relevance / follow-up labels. Assignments are kept in
+data/processed/labelstudio/assignment.json so they never change when sessions are added.
+Scripted segments from data/raw/session_log.csv are shown in the task header.
 
     python -m tools.import_to_labelstudio                # build clips + task files
     python -m tools.import_to_labelstudio --push         # ... and create projects + import
@@ -34,6 +36,7 @@ if __package__ in (None, ""):
 from tools.check_session import _ffmpeg, check_session  # noqa: E402
 from tools.labelstudio_client import PROJECTS, LabelStudio, media_url  # noqa: E402
 from tools.session_index import HOP_S, WINDOW_S, SessionIndex, find_sessions, load_session  # noqa: E402
+from tools.session_log import read_session_log  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW = ROOT / "data" / "raw"
@@ -42,6 +45,8 @@ DOUBLE_FRACTION = 0.20
 ANSWER_TAIL_S = 0.5
 PROXY_HEIGHT = 360
 PROXY_FPS = 16           # 2.5 s hop = exactly 40 frames, so every window starts on a keyframe
+TRANSCRIBE_FRACTION = 1 / 3  # manual transcripts for ~20 of 60 sessions (ASR test set); others: labels only
+ID_FIELD = {"sessions": "session_id", "windows": "window_id", "answers": "answer_id"}
 
 
 def _run(cmd: list[str]) -> None:
@@ -112,23 +117,33 @@ def _context(s: SessionIndex, w) -> str:
     return f"{a.question_id} ({a.category})"
 
 
-def build_session(s: SessionIndex, out: Path = OUT, force: bool = False) -> dict[str, list[dict]]:
+def _scripted_text(segments: list[dict]) -> str:
+    return ", ".join(f"{g['segment']} {g['start_s']:.0f}-{g['end_s']:.0f} s" for g in segments) or "not logged"
+
+
+def build_session(s: SessionIndex, out: Path = OUT, force: bool = False, per_window: bool = False,
+                  transcribe: bool = True, scripted: list[dict] | None = None) -> dict[str, list[dict]]:
     media = out / "media" / s.session_id
-    (media / "windows").mkdir(parents=True, exist_ok=True)
     (media / "answers").mkdir(parents=True, exist_ok=True)
     proxy = make_proxy(s, media / "proxy.webm")
     pid = s.candidate.get("participant_id")
 
+    session = [{"data": {
+        "session_id": s.session_id, "participant_id": pid, "duration_s": s.duration_s, "fps": PROXY_FPS,
+        "scripted": _scripted_text(scripted or []), "video": media_url(f"{s.session_id}/proxy.webm")}}]
+
     windows = []
-    for w in s.windows:
-        rel = f"{s.session_id}/windows/W{w.index:04d}.webm"
-        clip = out / "media" / rel
-        if force or not clip.exists():
-            cut_copy(proxy, w.start_s, WINDOW_S, clip)
-        windows.append({"data": {
-            "window_id": w.window_id, "session_id": s.session_id, "participant_id": pid,
-            "window_index": w.index, "t0_s": w.start_s, "t1_s": w.end_s, "answer_id": w.answer_id or "",
-            "context": _context(s, w), "video": media_url(rel)}})
+    if per_window:
+        (media / "windows").mkdir(exist_ok=True)
+        for w in s.windows:
+            rel = f"{s.session_id}/windows/W{w.index:04d}.webm"
+            clip = out / "media" / rel
+            if force or not clip.exists():
+                cut_copy(proxy, w.start_s, WINDOW_S, clip)
+            windows.append({"data": {
+                "window_id": w.window_id, "session_id": s.session_id, "participant_id": pid,
+                "window_index": w.index, "t0_s": w.start_s, "t1_s": w.end_s, "answer_id": w.answer_id or "",
+                "context": _context(s, w), "video": media_url(rel)}})
 
     answers = []
     oa = s.track_offsets_s.get("candidate_mic", 0.0)
@@ -143,22 +158,28 @@ def build_session(s: SessionIndex, out: Path = OUT, force: bool = False) -> dict
             "answer_id": a.answer_id, "session_id": s.session_id, "participant_id": pid,
             "question_id": a.question_id, "question_text": a.question_text, "category": a.category,
             "ask_s": a.ask_s, "end_s": a.end_s, "clip_t0_s": t0, "clip_t1_s": t1,
+            "transcribe": "REQUIRED" if transcribe else "skip",
             "audio": media_url(rel_a), "video": media_url(rel_v)}})
-    return {"windows": windows, "answers": answers}
+    return {"sessions": session, "windows": windows, "answers": answers}
 
 
-def assign_double(session_ids: list[str], previous: dict[str, bool], fraction: float = DOUBLE_FRACTION,
-                  seed: int = 42) -> dict[str, bool]:
-    """Keep earlier assignments; give new sessions 'double' until >= fraction of all sessions are double."""
+def assign_fraction(session_ids: list[str], previous: dict[str, bool], fraction: float,
+                    seed: int = 42, salt: str = "") -> dict[str, bool]:
+    """Keep earlier assignments; flag new sessions until >= fraction of all sessions are flagged (at least one)."""
     out = {sid: previous[sid] for sid in session_ids if sid in previous}
     new = sorted((sid for sid in session_ids if sid not in out),
-                 key=lambda sid: hashlib.sha1(f"{seed}:{sid}".encode()).hexdigest())
+                 key=lambda sid: hashlib.sha1(f"{seed}:{salt}{sid}".encode()).hexdigest())
     need = max(1, math.ceil(fraction * len(session_ids))) if session_ids else 0
     have = sum(out.values())
     for sid in new:
         out[sid] = have < need
         have += out[sid]
     return out
+
+
+def assign_double(session_ids: list[str], previous: dict[str, bool], fraction: float = DOUBLE_FRACTION,
+                  seed: int = 42) -> dict[str, bool]:
+    return assign_fraction(session_ids, previous, fraction, seed)
 
 
 def eligible(d: Path, allow_failed: bool) -> tuple[bool, str]:
@@ -179,6 +200,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--sessions", nargs="*", help="only these session IDs")
     ap.add_argument("--allow-failed", action="store_true", help="also include sessions that fail check_session")
     ap.add_argument("--force", action="store_true", help="re-cut clips that already exist")
+    ap.add_argument("--per-window", action="store_true",
+                    help="also cut one clip per 5 s window for the slower per-window projects")
     ap.add_argument("--push", action="store_true", help="create the Label Studio projects and import new tasks")
     ap.add_argument("--url", help="Label Studio URL (default $LABEL_STUDIO_URL or http://localhost:8090)")
     ap.add_argument("--token", help="personal access token (default: log in with $LABEL_STUDIO_USERNAME/PASSWORD)")
@@ -197,21 +220,29 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     assign_path = out / "assignment.json"
-    previous = json.loads(assign_path.read_text(encoding="utf-8"))["double"] if assign_path.exists() else {}
-    all_ids = sorted(set(previous) | {d.name for d in ok_dirs})
-    double = assign_double(all_ids, previous)
+    prev = json.loads(assign_path.read_text(encoding="utf-8")) if assign_path.exists() else {}
+    all_ids = sorted(set(prev.get("double", {})) | {d.name for d in ok_dirs})
+    double = assign_double(all_ids, prev.get("double", {}))
+    trans = assign_fraction(all_ids, prev.get("transcribe", {}), TRANSCRIBE_FRACTION, salt="transcribe:")
+    for sid, dbl in double.items():  # double-labelled sessions are always transcribed (transcript agreement)
+        trans[sid] = trans[sid] or dbl
     out.mkdir(parents=True, exist_ok=True)
-    assign_path.write_text(json.dumps({"fraction": DOUBLE_FRACTION, "double": double}, indent=2), encoding="utf-8")
+    assign_path.write_text(json.dumps({"double_fraction": DOUBLE_FRACTION, "double": double,
+                                       "transcribe_fraction": TRANSCRIBE_FRACTION, "transcribe": trans},
+                                      indent=2), encoding="utf-8")
+    log = read_session_log(Path(args.raw) / "session_log.csv")
 
-    tasks: dict[str, list[dict]] = {k: [] for k in PROJECTS}
+    kinds = ["sessions", "answers"] + (["windows"] if args.per_window else [])
+    tasks: dict[str, list[dict]] = {k + sfx: [] for k in kinds for sfx in ("", "_double")}
     for d in ok_dirs:
         s = load_session(d)
-        t = build_session(s, out, force=args.force)
+        t = build_session(s, out, force=args.force, per_window=args.per_window,
+                          transcribe=trans[s.session_id], scripted=log.get(s.session_id))
         suffix = "_double" if double[s.session_id] else ""
-        tasks["windows" + suffix] += t["windows"]
-        tasks["answers" + suffix] += t["answers"]
-        print(f"{s.session_id}: {len(t['windows'])} windows, {len(t['answers'])} answers"
-              f"{' (double-labelled)' if suffix else ''}")
+        for k in kinds:
+            tasks[k + suffix] += t[k]
+        print(f"{s.session_id}: {len(t['answers'])} answers{' (double-labelled)' if suffix else ''}"
+              f"{', transcribe' if trans[s.session_id] else ''}")
 
     # task files hold every eligible session, so they can be imported by hand in the UI as well
     tdir = out / "tasks"
@@ -221,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
         p = tdir / f"{key}.json"
         if p.exists():
             existing = json.loads(p.read_text(encoding="utf-8"))
-        id_field = "window_id" if key.startswith("windows") else "answer_id"
+        id_field = ID_FIELD[key.split("_")[0]]
         seen = {x["data"][id_field] for x in items}
         merged = [x for x in existing if x["data"][id_field] not in seen] + items
         p.write_text(json.dumps(merged, indent=1), encoding="utf-8")
@@ -231,7 +262,7 @@ def main(argv: list[str] | None = None) -> int:
         ls = LabelStudio(args.url, args.token)
         for key, items in tasks.items():
             proj = ls.ensure_project(key)
-            id_field = "window_id" if key.startswith("windows") else "answer_id"
+            id_field = ID_FIELD[key.split("_")[0]]
             have = {t["data"].get(id_field) for t in ls.export_tasks(proj["id"])}
             new = [x for x in items if x["data"][id_field] not in have]
             n = ls.import_tasks(proj["id"], new) if new else 0
