@@ -1,0 +1,29 @@
+<!--
+  MBAS window labelling: one task = one 5 s window (2.5 s hop) of the candidate
+  webcam with the candidate's own microphone muxed in.
+  Definitions and examples: docs/annotation_guide.md, section 2.
+-->
+<View>
+  <Header value="$window_id   ($t0_s - $t1_s s)   $context"/>
+  <Video name="video" value="$video" height="360"/>
+
+  <Header value="Attention: where is the candidate looking for most of these 5 s?" size="5"/>
+  <Choices name="attention" toName="video" choice="single-radio" showInline="true" required="true">
+    <Choice value="on_screen" alias="on_screen" hotkey="1"/>
+    <Choice value="off_screen" alias="off_screen" hotkey="2"/>
+  </Choices>
+
+  <Header value="Engagement" size="5"/>
+  <Choices name="engagement" toName="video" choice="single-radio" showInline="true" required="true">
+    <Choice value="engaged" hotkey="3"/>
+    <Choice value="neutral" hotkey="4"/>
+    <Choice value="disengaged" hotkey="5"/>
+  </Choices>
+
+  <Header value="Quality flags (optional)" size="5"/>
+  <Choices name="flags" toName="video" choice="multiple" showInline="true">
+    <Choice value="face_not_visible"/>
+    <Choice value="bad_video"/>
+    <Choice value="unsure"/>
+  </Choices>
+</View>

@@ -12,6 +12,8 @@ onnxruntime>=1.18
 tensorboard>=2.16
 pyyaml>=6.0
 soundfile>=0.12
+scipy>=1.11            # loadmat for MPIIGaze
+pyarrow>=15            # parquet label / manifest files
 
 # Backend / recorder
 fastapi>=0.115

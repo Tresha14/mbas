@@ -1,0 +1,45 @@
+<!--
+  MBAS answer labelling: one task = one question + answer, as the candidate's
+  microphone from "Ask" to "Answer ended" (+0.5 s).
+  Hesitation events are drawn as time spans on the waveform.
+  Definitions and examples: docs/annotation_guide.md, sections 3 and 4.
+-->
+<View>
+  <Header value="$answer_id   [$category]   clip starts at $clip_t0_s s of the session"/>
+  <Text name="question" value="$question_text"/>
+
+  <Header value="Hesitation spans: select a label, then drag on the waveform" size="5"/>
+  <Labels name="hesitation" toName="audio">
+    <Label value="filler" background="#f59e0b" hotkey="f"/>
+    <Label value="long_pause" background="#6366f1" hotkey="p"/>
+    <Label value="repetition" background="#ef4444" hotkey="r"/>
+    <Label value="restart" background="#10b981" hotkey="t"/>
+  </Labels>
+  <Audio name="audio" value="$audio" hotkey="space" sync="video"/>
+  <Video name="video" value="$video" height="240" sync="audio"/>
+
+  <Header value="Manual transcript of the CANDIDATE only (verbatim, keep fillers: um, uh, matlab ...)" size="5"/>
+  <TextArea name="transcript" toName="audio" rows="5" editable="true" maxSubmissions="1" required="true"/>
+
+  <Header value="Answer quality (1 = very poor, 5 = excellent)" size="5"/>
+  <Rating name="quality" toName="audio" maxRating="5" required="true"/>
+
+  <Header value="Relevance to the question (0 = off-topic, 1 = fully on-topic)" size="5"/>
+  <Number name="relevance" toName="audio" min="0" max="1" step="0.05" required="true"/>
+
+  <Header value="Does this answer need a follow-up question?" size="5"/>
+  <Choices name="follow_up" toName="audio" choice="single-radio" showInline="true" required="true">
+    <Choice value="yes"/>
+    <Choice value="no"/>
+  </Choices>
+  <View visibleWhen="choice-selected" whenTagName="follow_up" whenChoiceValue="yes">
+    <Header value="Main reason" size="5"/>
+    <Choices name="follow_up_reason" toName="audio" choice="single-radio">
+      <Choice value="vague"/>
+      <Choice value="low_confidence"/>
+      <Choice value="attention_drop"/>
+      <Choice value="topic_not_covered"/>
+      <Choice value="contradiction"/>
+    </Choices>
+  </View>
+</View>

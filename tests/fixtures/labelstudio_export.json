@@ -1,0 +1,896 @@
+{
+ "windows": [
+  {
+   "id": 1,
+   "annotations": [
+    {
+     "id": 1,
+     "completed_by": 1,
+     "result": [
+      {
+       "from_name": "attention",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "off_screen"
+        ]
+       }
+      },
+      {
+       "from_name": "engagement",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "engaged"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:00.485119Z",
+     "updated_at": "2026-10-25T07:48:00.485133Z",
+     "draft_created_at": null,
+     "lead_time": 4.2,
+     "prediction": {},
+     "result_count": 1,
+     "unique_id": "fed6e9d3-9047-4a0c-aba7-2a019a844b5d",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 1,
+     "project": 2,
+     "updated_by": 1,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    },
+    {
+     "id": 52,
+     "completed_by": 2,
+     "result": [
+      {
+       "from_name": "attention",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "off_screen"
+        ]
+       }
+      },
+      {
+       "from_name": "engagement",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "engaged"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:04.870262Z",
+     "updated_at": "2026-10-25T07:48:04.870276Z",
+     "draft_created_at": null,
+     "lead_time": 4.2,
+     "prediction": {},
+     "result_count": 1,
+     "unique_id": "c3ca023a-c623-461c-aa52-631a3bccf8aa",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 1,
+     "project": 2,
+     "updated_by": 2,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    }
+   ],
+   "drafts": [],
+   "predictions": [],
+   "data": {
+    "window_id": "R20261022-233654-LE556N_W0000",
+    "session_id": "R20261022-233654-LE556N",
+    "participant_id": "P001",
+    "window_index": 0,
+    "t0_s": 0.0,
+    "t1_s": 5.0,
+    "answer_id": "",
+    "context": "no question",
+    "video": "/data/local-files/?d=mbas/media/R20261022-233654-LE556N/windows/W0000.webm"
+   },
+   "meta": {},
+   "created_at": "2026-10-25T07:47:09.802902Z",
+   "updated_at": "2026-10-25T07:48:04.905984Z",
+   "allow_skip": true,
+   "inner_id": 1,
+   "total_annotations": 2,
+   "cancelled_annotations": 0,
+   "total_predictions": 0,
+   "comment_count": 0,
+   "unresolved_comment_count": 0,
+   "last_comment_updated_at": null,
+   "project": 2,
+   "updated_by": 2,
+   "comment_authors": []
+  },
+  {
+   "id": 2,
+   "annotations": [
+    {
+     "id": 2,
+     "completed_by": 1,
+     "result": [
+      {
+       "from_name": "attention",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "on_screen"
+        ]
+       }
+      },
+      {
+       "from_name": "engagement",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "engaged"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:00.577589Z",
+     "updated_at": "2026-10-25T07:48:00.577604Z",
+     "draft_created_at": null,
+     "lead_time": 4.2,
+     "prediction": {},
+     "result_count": 1,
+     "unique_id": "a92b6ec9-cd21-4b09-96cb-57f87217fe2f",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 2,
+     "project": 2,
+     "updated_by": 1,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    },
+    {
+     "id": 53,
+     "completed_by": 2,
+     "result": [
+      {
+       "from_name": "attention",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "on_screen"
+        ]
+       }
+      },
+      {
+       "from_name": "engagement",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "engaged"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:04.950476Z",
+     "updated_at": "2026-10-25T07:48:04.950490Z",
+     "draft_created_at": null,
+     "lead_time": 4.2,
+     "prediction": {},
+     "result_count": 1,
+     "unique_id": "82334695-f8c0-4811-b765-1f1d5cfc3fb8",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 2,
+     "project": 2,
+     "updated_by": 2,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    }
+   ],
+   "drafts": [],
+   "predictions": [],
+   "data": {
+    "window_id": "R20261022-233654-LE556N_W0001",
+    "session_id": "R20261022-233654-LE556N",
+    "participant_id": "P001",
+    "window_index": 1,
+    "t0_s": 2.5,
+    "t1_s": 7.5,
+    "answer_id": "R20261022-233654-LE556N_A01",
+    "context": "Q01 (hr)",
+    "video": "/data/local-files/?d=mbas/media/R20261022-233654-LE556N/windows/W0001.webm"
+   },
+   "meta": {},
+   "created_at": "2026-10-25T07:47:09.802958Z",
+   "updated_at": "2026-10-25T07:48:04.986695Z",
+   "allow_skip": true,
+   "inner_id": 2,
+   "total_annotations": 2,
+   "cancelled_annotations": 0,
+   "total_predictions": 0,
+   "comment_count": 0,
+   "unresolved_comment_count": 0,
+   "last_comment_updated_at": null,
+   "project": 2,
+   "updated_by": 2,
+   "comment_authors": []
+  },
+  {
+   "id": 3,
+   "annotations": [
+    {
+     "id": 3,
+     "completed_by": 1,
+     "result": [
+      {
+       "from_name": "attention",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "on_screen"
+        ]
+       }
+      },
+      {
+       "from_name": "engagement",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "engaged"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:00.667531Z",
+     "updated_at": "2026-10-25T07:48:00.667548Z",
+     "draft_created_at": null,
+     "lead_time": 4.2,
+     "prediction": {},
+     "result_count": 1,
+     "unique_id": "9792af65-bace-47f9-8091-6caa674dc633",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 3,
+     "project": 2,
+     "updated_by": 1,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    },
+    {
+     "id": 54,
+     "completed_by": 2,
+     "result": [
+      {
+       "from_name": "attention",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "on_screen"
+        ]
+       }
+      },
+      {
+       "from_name": "engagement",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "engaged"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:05.035349Z",
+     "updated_at": "2026-10-25T07:48:05.035363Z",
+     "draft_created_at": null,
+     "lead_time": 4.2,
+     "prediction": {},
+     "result_count": 1,
+     "unique_id": "afe71119-3b98-4082-b91d-b911d2b3c69a",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 3,
+     "project": 2,
+     "updated_by": 2,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    }
+   ],
+   "drafts": [],
+   "predictions": [],
+   "data": {
+    "window_id": "R20261022-233654-LE556N_W0002",
+    "session_id": "R20261022-233654-LE556N",
+    "participant_id": "P001",
+    "window_index": 2,
+    "t0_s": 5.0,
+    "t1_s": 10.0,
+    "answer_id": "R20261022-233654-LE556N_A01",
+    "context": "Q01 (hr)",
+    "video": "/data/local-files/?d=mbas/media/R20261022-233654-LE556N/windows/W0002.webm"
+   },
+   "meta": {},
+   "created_at": "2026-10-25T07:47:09.802992Z",
+   "updated_at": "2026-10-25T07:48:05.070434Z",
+   "allow_skip": true,
+   "inner_id": 3,
+   "total_annotations": 2,
+   "cancelled_annotations": 0,
+   "total_predictions": 0,
+   "comment_count": 0,
+   "unresolved_comment_count": 0,
+   "last_comment_updated_at": null,
+   "project": 2,
+   "updated_by": 2,
+   "comment_authors": []
+  },
+  {
+   "id": 4,
+   "annotations": [
+    {
+     "id": 4,
+     "completed_by": 1,
+     "result": [
+      {
+       "from_name": "attention",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "on_screen"
+        ]
+       }
+      },
+      {
+       "from_name": "engagement",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "engaged"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:00.752518Z",
+     "updated_at": "2026-10-25T07:48:00.752535Z",
+     "draft_created_at": null,
+     "lead_time": 4.2,
+     "prediction": {},
+     "result_count": 1,
+     "unique_id": "f7d192ac-bc91-481f-85ad-7255f7f80568",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 4,
+     "project": 2,
+     "updated_by": 1,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    },
+    {
+     "id": 55,
+     "completed_by": 2,
+     "result": [
+      {
+       "from_name": "attention",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "on_screen"
+        ]
+       }
+      },
+      {
+       "from_name": "engagement",
+       "to_name": "video",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "engaged"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:05.112064Z",
+     "updated_at": "2026-10-25T07:48:05.112076Z",
+     "draft_created_at": null,
+     "lead_time": 4.2,
+     "prediction": {},
+     "result_count": 1,
+     "unique_id": "1e64344c-2946-48a6-9658-0b6b2ed12fe0",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 4,
+     "project": 2,
+     "updated_by": 2,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    }
+   ],
+   "drafts": [],
+   "predictions": [],
+   "data": {
+    "window_id": "R20261022-233654-LE556N_W0003",
+    "session_id": "R20261022-233654-LE556N",
+    "participant_id": "P001",
+    "window_index": 3,
+    "t0_s": 7.5,
+    "t1_s": 12.5,
+    "answer_id": "R20261022-233654-LE556N_A01",
+    "context": "Q01 (hr)",
+    "video": "/data/local-files/?d=mbas/media/R20261022-233654-LE556N/windows/W0003.webm"
+   },
+   "meta": {},
+   "created_at": "2026-10-25T07:47:09.803023Z",
+   "updated_at": "2026-10-25T07:48:05.150057Z",
+   "allow_skip": true,
+   "inner_id": 4,
+   "total_annotations": 2,
+   "cancelled_annotations": 0,
+   "total_predictions": 0,
+   "comment_count": 0,
+   "unresolved_comment_count": 0,
+   "last_comment_updated_at": null,
+   "project": 2,
+   "updated_by": 2,
+   "comment_authors": []
+  }
+ ],
+ "answers": [
+  {
+   "id": 50,
+   "annotations": [
+    {
+     "id": 50,
+     "completed_by": 1,
+     "result": [
+      {
+       "from_name": "transcript",
+       "to_name": "audio",
+       "type": "textarea",
+       "value": {
+        "text": [
+         "um so I am a final year student"
+        ]
+       }
+      },
+      {
+       "from_name": "quality",
+       "to_name": "audio",
+       "type": "rating",
+       "value": {
+        "rating": 3
+       }
+      },
+      {
+       "from_name": "relevance",
+       "to_name": "audio",
+       "type": "number",
+       "value": {
+        "number": 0.7
+       }
+      },
+      {
+       "from_name": "follow_up",
+       "to_name": "audio",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "yes"
+        ]
+       }
+      },
+      {
+       "from_name": "follow_up_reason",
+       "to_name": "audio",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "vague"
+        ]
+       }
+      },
+      {
+       "id": "h0",
+       "from_name": "hesitation",
+       "to_name": "audio",
+       "type": "labels",
+       "origin": "manual",
+       "value": {
+        "start": 1.0,
+        "end": 1.6,
+        "channel": 0,
+        "labels": [
+         "filler"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:04.706515Z",
+     "updated_at": "2026-10-25T07:48:04.706529Z",
+     "draft_created_at": null,
+     "lead_time": null,
+     "prediction": {},
+     "result_count": 2,
+     "unique_id": "9276fcb2-571d-47de-92a6-60e1a603c34d",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 50,
+     "project": 4,
+     "updated_by": 1,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    },
+    {
+     "id": 101,
+     "completed_by": 2,
+     "result": [
+      {
+       "from_name": "transcript",
+       "to_name": "audio",
+       "type": "textarea",
+       "value": {
+        "text": [
+         "um so I am a final year student"
+        ]
+       }
+      },
+      {
+       "from_name": "quality",
+       "to_name": "audio",
+       "type": "rating",
+       "value": {
+        "rating": 4
+       }
+      },
+      {
+       "from_name": "relevance",
+       "to_name": "audio",
+       "type": "number",
+       "value": {
+        "number": 0.7
+       }
+      },
+      {
+       "from_name": "follow_up",
+       "to_name": "audio",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "yes"
+        ]
+       }
+      },
+      {
+       "from_name": "follow_up_reason",
+       "to_name": "audio",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "vague"
+        ]
+       }
+      },
+      {
+       "id": "h1",
+       "from_name": "hesitation",
+       "to_name": "audio",
+       "type": "labels",
+       "origin": "manual",
+       "value": {
+        "start": 1.1,
+        "end": 1.6,
+        "channel": 0,
+        "labels": [
+         "filler"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:08.936198Z",
+     "updated_at": "2026-10-25T07:48:08.936216Z",
+     "draft_created_at": null,
+     "lead_time": null,
+     "prediction": {},
+     "result_count": 2,
+     "unique_id": "ef05b650-6a2c-497f-a5e7-04701d574b22",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 50,
+     "project": 4,
+     "updated_by": 2,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    }
+   ],
+   "drafts": [],
+   "predictions": [],
+   "data": {
+    "answer_id": "R20261022-233654-LE556N_A01",
+    "session_id": "R20261022-233654-LE556N",
+    "participant_id": "P001",
+    "question_id": "Q01",
+    "question_text": "Tell me about yourself.",
+    "category": "hr",
+    "ask_s": 5.64,
+    "end_s": 13.641,
+    "clip_t0_s": 5.64,
+    "clip_t1_s": 14.141,
+    "audio": "/data/local-files/?d=mbas/media/R20261022-233654-LE556N/answers/A01.wav",
+    "video": "/data/local-files/?d=mbas/media/R20261022-233654-LE556N/answers/A01.webm"
+   },
+   "meta": {},
+   "created_at": "2026-10-25T07:47:10.616440Z",
+   "updated_at": "2026-10-25T07:48:08.980762Z",
+   "allow_skip": true,
+   "inner_id": 1,
+   "total_annotations": 2,
+   "cancelled_annotations": 0,
+   "total_predictions": 0,
+   "comment_count": 0,
+   "unresolved_comment_count": 0,
+   "last_comment_updated_at": null,
+   "project": 4,
+   "updated_by": 2,
+   "comment_authors": []
+  },
+  {
+   "id": 51,
+   "annotations": [
+    {
+     "id": 51,
+     "completed_by": 1,
+     "result": [
+      {
+       "from_name": "transcript",
+       "to_name": "audio",
+       "type": "textarea",
+       "value": {
+        "text": [
+         "um so I am a final year student"
+        ]
+       }
+      },
+      {
+       "from_name": "quality",
+       "to_name": "audio",
+       "type": "rating",
+       "value": {
+        "rating": 3
+       }
+      },
+      {
+       "from_name": "relevance",
+       "to_name": "audio",
+       "type": "number",
+       "value": {
+        "number": 0.7
+       }
+      },
+      {
+       "from_name": "follow_up",
+       "to_name": "audio",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "yes"
+        ]
+       }
+      },
+      {
+       "from_name": "follow_up_reason",
+       "to_name": "audio",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "vague"
+        ]
+       }
+      },
+      {
+       "id": "h0",
+       "from_name": "hesitation",
+       "to_name": "audio",
+       "type": "labels",
+       "origin": "manual",
+       "value": {
+        "start": 1.0,
+        "end": 1.6,
+        "channel": 0,
+        "labels": [
+         "filler"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:04.785072Z",
+     "updated_at": "2026-10-25T07:48:04.785087Z",
+     "draft_created_at": null,
+     "lead_time": null,
+     "prediction": {},
+     "result_count": 2,
+     "unique_id": "7d744a0b-4446-4780-93e2-64a26c9257cc",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 51,
+     "project": 4,
+     "updated_by": 1,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    },
+    {
+     "id": 102,
+     "completed_by": 2,
+     "result": [
+      {
+       "from_name": "transcript",
+       "to_name": "audio",
+       "type": "textarea",
+       "value": {
+        "text": [
+         "um so I am a final year student"
+        ]
+       }
+      },
+      {
+       "from_name": "quality",
+       "to_name": "audio",
+       "type": "rating",
+       "value": {
+        "rating": 4
+       }
+      },
+      {
+       "from_name": "relevance",
+       "to_name": "audio",
+       "type": "number",
+       "value": {
+        "number": 0.7
+       }
+      },
+      {
+       "from_name": "follow_up",
+       "to_name": "audio",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "yes"
+        ]
+       }
+      },
+      {
+       "from_name": "follow_up_reason",
+       "to_name": "audio",
+       "type": "choices",
+       "value": {
+        "choices": [
+         "vague"
+        ]
+       }
+      },
+      {
+       "id": "h1",
+       "from_name": "hesitation",
+       "to_name": "audio",
+       "type": "labels",
+       "origin": "manual",
+       "value": {
+        "start": 1.1,
+        "end": 1.6,
+        "channel": 0,
+        "labels": [
+         "filler"
+        ]
+       }
+      }
+     ],
+     "was_cancelled": false,
+     "ground_truth": false,
+     "created_at": "2026-10-25T07:48:09.033928Z",
+     "updated_at": "2026-10-25T07:48:09.033948Z",
+     "draft_created_at": null,
+     "lead_time": null,
+     "prediction": {},
+     "result_count": 2,
+     "unique_id": "006da088-622e-449e-881f-35027718edce",
+     "import_id": null,
+     "last_action": null,
+     "bulk_created": false,
+     "task": 51,
+     "project": 4,
+     "updated_by": 2,
+     "parent_prediction": null,
+     "parent_annotation": null,
+     "last_created_by": null
+    }
+   ],
+   "drafts": [],
+   "predictions": [],
+   "data": {
+    "answer_id": "R20261022-233654-LE556N_A02",
+    "session_id": "R20261022-233654-LE556N",
+    "participant_id": "P001",
+    "question_id": "Q25",
+    "question_text": "What is the difference between a process and a thread?",
+    "category": "technical",
+    "ask_s": 14.642,
+    "end_s": 22.642,
+    "clip_t0_s": 14.642,
+    "clip_t1_s": 23.142,
+    "audio": "/data/local-files/?d=mbas/media/R20261022-233654-LE556N/answers/A02.wav",
+    "video": "/data/local-files/?d=mbas/media/R20261022-233654-LE556N/answers/A02.webm"
+   },
+   "meta": {},
+   "created_at": "2026-10-25T07:47:10.616514Z",
+   "updated_at": "2026-10-25T07:48:09.070215Z",
+   "allow_skip": true,
+   "inner_id": 2,
+   "total_annotations": 2,
+   "cancelled_annotations": 0,
+   "total_predictions": 0,
+   "comment_count": 0,
+   "unresolved_comment_count": 0,
+   "last_comment_updated_at": null,
+   "project": 4,
+   "updated_by": 2,
+   "comment_authors": []
+  }
+ ]
+}

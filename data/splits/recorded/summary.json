@@ -1,0 +1,20 @@
+{
+  "source": "recorded",
+  "seed": 42,
+  "ratios": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "participants": {
+    "train": 1,
+    "val": 0,
+    "test": 0
+  },
+  "sessions": {
+    "train": 1,
+    "val": 0,
+    "test": 0
+  },
+  "leakage_problems": []
+}

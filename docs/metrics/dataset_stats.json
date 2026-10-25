@@ -1,0 +1,257 @@
+{
+  "generated": "2026-10-25",
+  "recorded": {
+    "sessions": 1,
+    "participants": 1,
+    "hours": 0.035,
+    "mean_session_min": 2.11,
+    "answered_questions": 2,
+    "windows": 49,
+    "demographics": {
+      "gender": {
+        "female": 1
+      },
+      "age_band": {
+        "18-24": 1
+      },
+      "accent": {
+        "south_indian": 1
+      },
+      "glasses": {
+        "True": 1
+      }
+    },
+    "labels": {
+      "labelled_windows": 0,
+      "labelled_answers": 0
+    },
+    "agreement": {},
+    "splits": {
+      "source": "recorded",
+      "seed": 42,
+      "ratios": {
+        "train": 0.7,
+        "val": 0.15,
+        "test": 0.15
+      },
+      "participants": {
+        "train": 1,
+        "val": 0,
+        "test": 0
+      },
+      "sessions": {
+        "train": 1,
+        "val": 0,
+        "test": 0
+      },
+      "leakage_problems": []
+    }
+  },
+  "synthetic": {
+    "sessions": 289,
+    "participants": 120,
+    "meetings": 40,
+    "hours": 32.41,
+    "meeting_hours": 18.68,
+    "demographics": {
+      "gender": {
+        "female": 56,
+        "male": 63,
+        "non_binary": 1
+      },
+      "age_band": {
+        "18-21": 33,
+        "22-25": 58,
+        "26-30": 20,
+        "31-40": 9
+      },
+      "accent": {
+        "bengali_english": 9,
+        "gujarati_english": 33,
+        "hindi_english": 24,
+        "marathi_english": 6,
+        "neutral_indian_english": 28,
+        "tamil_english": 12,
+        "telugu_english": 8
+      },
+      "glasses": {
+        "False": 74,
+        "True": 46
+      }
+    },
+    "labels": {
+      "labelled_windows": 46234,
+      "labelled_answers": 3179,
+      "attention": {
+        "off_screen": 15234,
+        "on_screen": 31000
+      },
+      "engagement": {
+        "disengaged": 4342,
+        "engaged": 21245,
+        "neutral": 20647
+      },
+      "labelled_sessions": 289,
+      "quality_1to5": {
+        "1": 110,
+        "2": 515,
+        "3": 1117,
+        "4": 1034,
+        "5": 403
+      },
+      "follow_up_needed": {
+        "0": 1314,
+        "1": 1865
+      },
+      "follow_up_reason": {
+        "attention_drop": 288,
+        "contradiction": 147,
+        "low_confidence": 54,
+        "none": 1314,
+        "topic_not_covered": 115,
+        "vague": 1261
+      },
+      "relevance_mean": 0.548,
+      "transcribed_answers": 3179,
+      "transcript_words": 161749,
+      "speaking_pattern": {
+        "balanced": 1244,
+        "confident": 831,
+        "hesitant": 456,
+        "monotone": 342,
+        "rushed": 306
+      },
+      "hesitation_events": {
+        "filler": 6052,
+        "long_pause": 2723,
+        "repetition": 1754,
+        "restart": 1412
+      }
+    },
+    "agreement": {
+      "labels_dir": "data\\processed\\labels\\synthetic",
+      "windows": [
+        {
+          "annotators": [
+            "ANN1",
+            "ANN2"
+          ],
+          "n_items": 9057,
+          "n_sessions": 57,
+          "attention_kappa": 0.8498,
+          "attention_agreement": 0.9286,
+          "engagement_kappa": 0.754,
+          "engagement_kappa_linear": 0.7926,
+          "engagement_agreement": 0.8492
+        }
+      ],
+      "double_labelled_sessions": 57,
+      "sessions": 289,
+      "double_labelled_fraction": 0.1972,
+      "answers": [
+        {
+          "annotators": [
+            "ANN1",
+            "ANN2"
+          ],
+          "n_items": 627,
+          "n_sessions": 57,
+          "quality_kappa_quadratic": 0.8606,
+          "quality_exact_agreement": 0.6922,
+          "relevance_kappa_5bins": 0.8457,
+          "relevance_pearson_r": 0.9614,
+          "relevance_mae": 0.0548,
+          "follow_up_kappa": 0.8074,
+          "follow_up_reason_kappa": 0.8597,
+          "speaking_pattern_kappa": 1.0
+        }
+      ]
+    },
+    "splits": {
+      "source": "synthetic",
+      "seed": 42,
+      "ratios": {
+        "train": 0.7,
+        "val": 0.15,
+        "test": 0.15
+      },
+      "participants": {
+        "train": 84,
+        "val": 18,
+        "test": 18
+      },
+      "sessions": {
+        "train": 344,
+        "val": 66,
+        "test": 72
+      },
+      "leakage_problems": [],
+      "meetings": {
+        "mixed": 30,
+        "train": 10
+      },
+      "meeting_rows_where_provided_split_is_not_personwise": 81,
+      "note": "meeting-level targets: use meetings with split != 'mixed'; per-participant meeting rows follow the participant's split (meeting_participants.csv)"
+    }
+  },
+  "public": {
+    "wider_face": {
+      "name": "wider_face",
+      "status": "converted",
+      "converted_at": "2026-10-25T13:55:42",
+      "n_items": 16106,
+      "n_subjects": 61,
+      "splits_official": {
+        "train": 12880,
+        "val": 3226
+      },
+      "title": "WIDER FACE",
+      "used_for": "face detector (Stage 4)",
+      "license": "research only (CC BY-NC-ND 4.0)",
+      "source": "http://shuoyang1213.me/WIDERFACE/ (mirror: huggingface.co/datasets/CUHK-CSE/wider_face)",
+      "n_boxes": 199128,
+      "missing_images": 0
+    },
+    "mpiigaze": {
+      "status": "not converted"
+    },
+    "columbia_gaze": {
+      "status": "not converted"
+    },
+    "daisee": {
+      "status": "not converted"
+    },
+    "librispeech": {
+      "status": "not converted"
+    },
+    "common_voice_in": {
+      "status": "not converted"
+    },
+    "sep28k": {
+      "status": "not converted"
+    },
+    "mit_interview": {
+      "status": "not converted"
+    },
+    "ami": {
+      "name": "ami",
+      "status": "converted",
+      "converted_at": "2026-10-25T13:34:37",
+      "n_items": 682,
+      "n_subjects": 190,
+      "splits_official": {
+        "all": 682
+      },
+      "title": "AMI Meeting Corpus",
+      "used_for": "meeting mode: talk balance, engagement (Stage 8)",
+      "license": "CC BY 4.0",
+      "source": "https://groups.inf.ed.ac.uk/ami/corpus/",
+      "audio": "none",
+      "n_meetings": 171,
+      "n_turns": 93637,
+      "meeting_hours": 98.05,
+      "note": "hours = speaker-track hours (meeting duration x speakers); subject_id = AMI global speaker id",
+      "hours": 391.85
+    }
+  }
+}

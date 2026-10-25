@@ -1,0 +1,39 @@
+{
+  "labels_dir": "data\\processed\\labels\\synthetic",
+  "windows": [
+    {
+      "annotators": [
+        "ANN1",
+        "ANN2"
+      ],
+      "n_items": 9057,
+      "n_sessions": 57,
+      "attention_kappa": 0.8498,
+      "attention_agreement": 0.9286,
+      "engagement_kappa": 0.754,
+      "engagement_kappa_linear": 0.7926,
+      "engagement_agreement": 0.8492
+    }
+  ],
+  "double_labelled_sessions": 57,
+  "sessions": 289,
+  "double_labelled_fraction": 0.1972,
+  "answers": [
+    {
+      "annotators": [
+        "ANN1",
+        "ANN2"
+      ],
+      "n_items": 627,
+      "n_sessions": 57,
+      "quality_kappa_quadratic": 0.8606,
+      "quality_exact_agreement": 0.6922,
+      "relevance_kappa_5bins": 0.8457,
+      "relevance_pearson_r": 0.9614,
+      "relevance_mae": 0.0548,
+      "follow_up_kappa": 0.8074,
+      "follow_up_reason_kappa": 0.8597,
+      "speaking_pattern_kappa": 1.0
+    }
+  ]
+}

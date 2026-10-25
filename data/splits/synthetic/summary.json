@@ -1,0 +1,26 @@
+{
+  "source": "synthetic",
+  "seed": 42,
+  "ratios": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "participants": {
+    "train": 84,
+    "val": 18,
+    "test": 18
+  },
+  "sessions": {
+    "train": 344,
+    "val": 66,
+    "test": 72
+  },
+  "leakage_problems": [],
+  "meetings": {
+    "mixed": 30,
+    "train": 10
+  },
+  "meeting_rows_where_provided_split_is_not_personwise": 81,
+  "note": "meeting-level targets: use meetings with split != 'mixed'; per-participant meeting rows follow the participant's split (meeting_participants.csv)"
+}

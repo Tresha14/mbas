@@ -22,7 +22,20 @@ switch ($Target) {
     "recorder-web" { Push-Location recorder\web; npm run dev; Pop-Location }
     "check" { & $Py -m tools.check_session $Arg }
     "test" { & $Py -m pytest -q tests }
+    "labelstudio" { docker compose --profile labelling up -d labelstudio; Write-Output "Label Studio: http://localhost:8090 (login in .env)" }
+    "labelstudio-import" { & $Py -m tools.import_to_labelstudio --push }
+    "labels" {
+        & $Py -m tools.export_labels --pull
+        & $Py -m tools.synthetic_to_labels
+        & $Py -m tools.agreement --labels data/processed/labels/recorded
+        & $Py -m tools.agreement --labels data\processed\labels\synthetic
+        & $Py -m tools.make_splits
+        & $Py -m tools.dataset_stats
+    }
+    "datasets" { & $Py -m tools.datasets.download_all }
+    "splits" { & $Py -m tools.make_splits }
+    "stats" { & $Py -m tools.dataset_stats }
     default {
-        Write-Output "targets: venv install up down ps questions recorder-api recorder-web-install recorder-web check <dir> test"
+        Write-Output "targets: venv install up down ps questions recorder-api recorder-web-install recorder-web check <dir> test labelstudio labelstudio-import labels datasets splits stats"
     }
 }

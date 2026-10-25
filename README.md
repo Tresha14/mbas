@@ -12,7 +12,7 @@ initialisation on our own recorded dataset plus public raw datasets.
 | Stage | Content | Status |
 | --- | --- | --- |
 | 1 | Repo skeleton, docker compose, dataset recorder, `check_session.py` | done (see below) |
-| 2 | Dataset protocol, annotation, public datasets, splits | – |
+| 2 | Dataset protocol, annotation, public datasets, splits | tools done; recording + labelling in progress (see `docs/dataset_card.md`) |
 | 3 | Data pipeline + features (`ml/common`) | – |
 | 4–5 | Vision: face/eye/iris, head pose, engagement, attention | – |
 | 6 | VAD + Conformer-CTC ASR + KenLM | – |
@@ -32,6 +32,9 @@ recorder/                     dataset recording app
   questions.json              40 interview questions (HR, behavioural, technical)
 tools/check_session.py        verifies a recorded session folder
 tools/make_questions.py       builds recorder/questions.json from the synthetic question bank
+tools/import_to_labelstudio.py, export_labels.py, agreement.py, make_splits.py, dataset_stats.py   Stage 2
+tools/datasets/               public dataset download + conversion scripts
+infra/labelstudio/            Label Studio labelling configs
 ml/{common,vision,speech,behaviour,response,fusion,export}/
 backend/  frontend/           product app (Stage 9)
 infra/                        livekit.yaml, Caddyfile
@@ -120,6 +123,38 @@ The check covers: required files, consent and meta fields, 16 kHz mono audio, we
 frame gaps, each track covering at least 95% of the recording window, required track durations within 1 s,
 **sync drift < 100 ms** per track (media duration vs shared-clock duration), question-event pairing, and
 calibration length, rate and bounds. Use `--lenient` to only warn when the screen share or calibration is missing.
+
+## Stage 2: dataset construction and annotation
+
+Documents: `docs/data_protocol.md` (how to run a session, consent text, storage rules),
+`docs/annotation_guide.md` (label definitions and examples) and `docs/dataset_card.md` (generated statistics).
+
+```powershell
+.	asks.ps1 labelstudio          # Label Studio on http://localhost:8090 (login: LABEL_STUDIO_USERNAME/PASSWORD in .env)
+.	asks.ps1 labelstudio-import   # cut clips for every checked session, create the 4 projects, import new tasks
+#   ... annotators label in the browser (docs/annotation_guide.md) ...
+.	asks.ps1 labels               # export -> parquet, synthetic labels, kappa, person-wise splits, dataset card
+.	asks.ps1 datasets             # download + convert WIDER FACE, MPIIGaze, LibriSpeech, SEP-28k, AMI (~45 GB)
+```
+
+| Step | Tool | Output |
+| --- | --- | --- |
+| Clips + tasks | `tools/import_to_labelstudio.py` | `data/processed/labelstudio/{media,tasks}`; 5 s window clips (webcam + candidate mic) and per-answer audio/video |
+| Double labelling | same | 20% of sessions (at least one) go to the `(double-labelled)` projects; assignment kept in `assignment.json` |
+| Export | `tools/export_labels.py --pull` | `data/processed/labels/recorded/{windows,answers,hesitation_events}.parquet` + `*_annotations.parquet` (all annotators) |
+| Synthetic labels | `tools/synthetic_to_labels.py` | same schema in `data/processed/labels/synthetic/` |
+| Agreement | `tools/agreement.py` | Cohen's kappa per label, `docs/metrics/agreement_<source>.json` |
+| Splits | `tools/make_splits.py` | `data/splits/<source>/` 70/15/15 by participant, stratified by gender, leakage check |
+| Dataset card | `tools/dataset_stats.py` | `docs/dataset_card.md`, `docs/metrics/dataset_stats.json` |
+| Public data | `tools/datasets/*.py` | `data/processed/public/<name>/manifest.parquet` + `info.json` (see `tools/datasets/README.md`) |
+
+Second annotator account: create it in Label Studio (Organization → invite link), or with
+`docker exec mbas-labelstudio-1 label-studio reset_password --username <email> --password <pw>` for an existing user.
+Label Studio 1.23 disables legacy API tokens, so the tools log in with the username/password from `.env`
+(or use a personal access token in `LABEL_STUDIO_TOKEN`).
+
+The synthetic dataset's meeting-level `split` column is not person-wise (some meeting participants are interview
+test participants); `make_splits` therefore assigns meeting rows by participant and marks such meetings `mixed`.
 
 ## Tests
 

@@ -5,7 +5,7 @@ else
 PY ?= .venv/bin/python
 endif
 
-.PHONY: help venv install torch-cuda up down ps recorder-api recorder-web recorder-web-install questions check test
+.PHONY: help venv install torch-cuda up down ps recorder-api recorder-web recorder-web-install questions check test \n	labelstudio labelstudio-import labels datasets splits stats
 
 help:
 	@echo "venv / install / torch-cuda  set up Python env"
@@ -15,6 +15,11 @@ help:
 	@echo "recorder-web                 Next.js recorder on :3010"
 	@echo "check S=<session_dir>        verify a recorded session"
 	@echo "test                         run pytest"
+	@echo "labelstudio                  start Label Studio on :8090"
+	@echo "labelstudio-import           clips + tasks for recorded sessions, push to Label Studio"
+	@echo "labels                       export labels, kappa, splits, dataset card"
+	@echo "datasets                     download + convert the automatic public datasets"
+	@echo "splits / stats               person-wise splits / docs/dataset_card.md"
 
 venv:
 	python -m venv .venv
@@ -53,3 +58,26 @@ check:
 
 test:
 	$(PY) -m pytest -q tests
+
+labelstudio:
+	docker compose --profile labelling up -d labelstudio
+
+labelstudio-import:
+	$(PY) -m tools.import_to_labelstudio --push
+
+labels:
+	$(PY) -m tools.export_labels --pull
+	$(PY) -m tools.synthetic_to_labels
+	$(PY) -m tools.agreement --labels data/processed/labels/recorded
+	$(PY) -m tools.agreement --labels data/processed/labels/synthetic
+	$(PY) -m tools.make_splits
+	$(PY) -m tools.dataset_stats
+
+datasets:
+	$(PY) -m tools.datasets.download_all
+
+splits:
+	$(PY) -m tools.make_splits
+
+stats:
+	$(PY) -m tools.dataset_stats

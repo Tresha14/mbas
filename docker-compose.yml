@@ -57,6 +57,23 @@ services:
     depends_on:
       - livekit
 
+  # Annotation tool (Stage 2). Started on demand: docker compose --profile labelling up -d labelstudio
+  # Serves the clips made by tools/import_to_labelstudio.py from data/processed/labelstudio.
+  labelstudio:
+    image: heartexlabs/label-studio:1.23.1
+    profiles: ["labelling"]
+    environment:
+      LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED: "true"
+      LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT: /label-studio/files
+      LABEL_STUDIO_USERNAME: ${LABEL_STUDIO_USERNAME:-admin@mbas.local}
+      LABEL_STUDIO_PASSWORD: ${LABEL_STUDIO_PASSWORD:-mbas-labelling}
+    ports:
+      - "${MBAS_LABELSTUDIO_PORT:-8090}:8080"
+    volumes:
+      - labelstudio:/label-studio/data
+      - ./data/processed/labelstudio:/label-studio/files/mbas
+
 volumes:
   pgdata:
   caddydata:
+  labelstudio:
