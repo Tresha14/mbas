@@ -133,11 +133,11 @@ Documents: `docs/data_protocol.md` (how to run a session, consent text, storage 
 `docs/annotation_guide.md` (label definitions and examples) and `docs/dataset_card.md` (generated statistics).
 
 ```powershell
-.	asks.ps1 labelstudio          # Label Studio on http://localhost:8090 (login: LABEL_STUDIO_USERNAME/PASSWORD in .env)
-.	asks.ps1 labelstudio-import   # cut clips for every checked session, create the 4 projects, import new tasks
+.\tasks.ps1 labelstudio          # Label Studio on http://localhost:8090 (login: LABEL_STUDIO_USERNAME/PASSWORD in .env)
+.\tasks.ps1 labelstudio-import   # cut clips for every checked session, create the 4 projects, import new tasks
 #   ... annotators label in the browser (docs/annotation_guide.md) ...
-.	asks.ps1 labels               # export -> parquet, synthetic labels, kappa, person-wise splits, dataset card
-.	asks.ps1 datasets             # download + convert WIDER FACE, MPIIGaze, LibriSpeech, SEP-28k, AMI (~45 GB)
+.\tasks.ps1 labels               # export -> parquet, synthetic labels, kappa, person-wise splits, dataset card
+.\tasks.ps1 datasets             # download + convert WIDER FACE, MPIIGaze, LibriSpeech, SEP-28k, AMI (~45 GB)
 ```
 
 | Step | Tool | Output |
@@ -162,7 +162,7 @@ test participants); `make_splits` therefore assigns meeting rows by participant 
 
 ## Stage 3: data pipeline and features
 
-`.	asks.ps1 data` (= `python -m ml.common.make_data`) turns everything into model-ready tables; `.	asks.ps1 eda`
+`.\tasks.ps1 data` (= `python -m ml.common.make_data`) turns everything into model-ready tables; `.\tasks.ps1 eda`
 rebuilds `notebooks/eda.ipynb`.
 
 | Module (`ml/common/`) | Content |
