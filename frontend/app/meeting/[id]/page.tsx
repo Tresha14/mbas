@@ -4,9 +4,9 @@ import type { RemoteParticipant, Room } from "livekit-client";
 import { Play, Square } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Bar } from "@/components/charts";
+import { Meter } from "@/components/charts";
 import { Header, VideoSlot } from "@/components/shell";
-import { Badge, Button, Card, CardTitle } from "@/components/ui";
+import { Badge, Button, Card, Dot, Empty, SectionLabel } from "@/components/ui";
 import { useAnalytics } from "@/lib/analytics";
 import { api, type Interview } from "@/lib/api";
 import { joinRoom } from "@/lib/room";
@@ -38,47 +38,53 @@ export default function Meeting() {
 
   const conv = state.conversation;
   const meet = conv?.meeting ?? {};
+  const names = Object.fromEntries(people.map((p) => [p.identity, p.name || p.identity]));
   return (
     <>
-      <Header right={
-        <Button size="sm" variant={iv?.status === "live" ? "danger" : "good"} disabled={iv?.status === "ended"}
+      <Header wide right={
+        <Button size="sm" variant={iv?.status === "live" ? "danger" : "accent"} disabled={iv?.status === "ended"}
           onClick={async () => iv && setIv(iv.status === "live" ? await api.stop(iv.id) : await api.start(iv.id))}>
-          {iv?.status === "live" ? <><Square size={14} /> End meeting</> : <><Play size={14} /> Start analysis</>}
+          {iv?.status === "live" ? <><Square size={13} /> End meeting</> : <><Play size={13} /> Start analysis</>}
         </Button>} />
-      <main className="mx-auto grid max-w-7xl gap-4 px-4 py-4 lg:grid-cols-[1fr_340px]">
-        <div>
-          <h1 className="mb-3 text-lg font-semibold">{iv?.title} <Badge>{people.length + 1} in call</Badge></h1>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {Object.entries(videos).map(([k, v]) => <VideoSlot key={k} el={v.el} label={v.name} className="aspect-video" />)}
-            {Object.keys(videos).length === 0 && <Card className="text-sm text-muted">Share the participant link from the dashboard. Videos appear here.</Card>}
+      <main className="mx-auto grid max-w-[1440px] gap-6 px-6 py-6 xl:grid-cols-[1fr_360px]">
+        <section>
+          <div className="mb-5 flex items-center gap-3">
+            <h1 className="font-display text-2xl tracking-tight">{iv?.title}</h1>
+            <Badge><Dot tone={iv?.status === "live" ? "good" : "neutral"} pulse={iv?.status === "live"} /> {people.length + 1} in the call</Badge>
           </div>
-        </div>
-        <aside className="space-y-4">
-          <Card>
-            <CardTitle>Talk time</CardTitle>
-            {!conv && <p className="text-sm text-muted">Starts after the first 10 s of analysis.</p>}
-            <div className="space-y-3">
-              {conv && Object.entries(conv.participants).map(([k, p]) => <Bar key={k} label={k} value={p.talk_share} />)}
+          {Object.keys(videos).length === 0 ? (
+            <Card><Empty title="Waiting for participants" text="Share the participant link from your dashboard. Their video appears here." /></Card>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+              {Object.entries(videos).map(([k, v]) => <VideoSlot key={k} el={v.el} label={v.name} className="aspect-video" />)}
             </div>
-            {conv && <p className="mt-3 text-xs text-muted">Balance (Gini, 0 = perfectly even): {conv.talk_balance_gini.toFixed(2)} · turns {conv.turn_count} · overlap {conv.overlap_s.toFixed(1)} s</p>}
+          )}
+        </section>
+        <aside className="space-y-6">
+          <Card>
+            <SectionLabel className="mb-4">Talk time</SectionLabel>
+            {!conv ? <p className="text-sm text-muted">Appears about ten seconds after analysis starts.</p> : (
+              <div className="space-y-4">
+                {Object.entries(conv.participants).sort((a, b) => b[1].talk_share - a[1].talk_share)
+                  .map(([k, p]) => <Meter key={k} label={names[k] ?? k} value={p.talk_share} />)}
+                <p className="pt-1 text-[13px] text-muted">
+                  {conv.talk_balance_gini < 0.2 ? "Conversation is well balanced." : conv.talk_balance_gini < 0.4 ? "Slightly uneven conversation." : "One or two voices dominate."}
+                </p>
+              </div>
+            )}
           </Card>
           <Card>
-            <CardTitle>Engagement per participant (meeting head)</CardTitle>
-            <div className="space-y-3">
-              {Object.entries(meet).map(([k, m]) => (
-                <div key={k} className="space-y-1">
-                  <Bar label={`${k} engagement`} value={m.engagement} />
-                  <div className="text-xs text-muted">contribution balance {Math.round(m.contribution_balance * 100)}%</div>
-                </div>
-              ))}
-              {Object.keys(meet).length === 0 && <p className="text-sm text-muted">Waiting for audio...</p>}
-            </div>
+            <SectionLabel className="mb-4">Engagement</SectionLabel>
+            {Object.keys(meet).length === 0 ? <p className="text-sm text-muted">Waiting for audio…</p> : (
+              <div className="space-y-4">{Object.entries(meet).map(([k, m]) => <Meter key={k} label={names[k] ?? k} value={m.engagement} />)}</div>
+            )}
           </Card>
-          <Card>
-            <CardTitle>Follow-up items</CardTitle>
-            {state.followUps.length === 0 ? <p className="text-sm text-muted">None yet.</p> :
-              state.followUps.map((f, i) => <div key={i} className="text-sm">{f.reason}: {f.text}</div>)}
-          </Card>
+          {state.followUps.length > 0 && (
+            <Card>
+              <SectionLabel className="mb-3">Follow-up items</SectionLabel>
+              <ul className="space-y-2 text-sm">{state.followUps.map((f, i) => <li key={i} className="text-muted">{f.text}</li>)}</ul>
+            </Card>
+          )}
         </aside>
       </main>
     </>

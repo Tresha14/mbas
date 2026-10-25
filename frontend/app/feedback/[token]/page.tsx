@@ -1,10 +1,9 @@
 "use client";
 
-import { Lightbulb, Sparkles } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Header } from "@/components/shell";
-import { Badge, Card, CardTitle } from "@/components/ui";
+import { Logo } from "@/components/shell";
+import { Empty, ThemeToggle } from "@/components/ui";
 import { api, type CandidateView } from "@/lib/api";
 
 export default function Feedback() {
@@ -14,36 +13,42 @@ export default function Feedback() {
   useEffect(() => { api.feedback(token).then(setFb).catch((e) => setError(e.message)); }, [token]);
 
   return (
-    <>
-      <Header />
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-10">
-        {error && <Card className="text-bad">{error}</Card>}
+    <main className="min-h-screen px-6 py-8">
+      <div className="mx-auto flex max-w-2xl items-center justify-between"><Logo /><ThemeToggle /></div>
+      <article className="mx-auto max-w-2xl py-16">
+        {error && <Empty title="This feedback isn't available" text="The link may be wrong, or your interviewer hasn't released it yet." />}
         {fb && (
           <>
-            <div>
-              <p className="text-sm text-accent">Your interview feedback</p>
-              <h1 className="text-2xl font-semibold">{fb.title}</h1>
-              <p className="text-xs text-muted">Released {new Date(fb.released_at).toLocaleString()}</p>
-            </div>
-            <Card>
-              <CardTitle className="flex items-center gap-2"><Sparkles size={14} /> What went well</CardTitle>
-              <ul className="list-disc space-y-1 pl-5">{fb.strengths.map((s, i) => <li key={i}>{s}</li>)}</ul>
-            </Card>
-            <Card>
-              <CardTitle className="flex items-center gap-2"><Lightbulb size={14} /> Three things to work on</CardTitle>
-              <div className="space-y-4">
+            <p className="text-[13px] text-accent">Your interview feedback</p>
+            <h1 className="mt-3 font-display text-4xl leading-tight tracking-tight">{fb.title}</h1>
+            <p className="mt-3 text-sm text-faint">{new Date(fb.released_at).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })}</p>
+
+            <section className="mt-14">
+              <h2 className="font-display text-2xl">What went well</h2>
+              <ul className="mt-5 space-y-3">
+                {fb.strengths.map((s, i) => <li key={i} className="flex gap-3 text-[16px] leading-relaxed"><span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-good" />{s}</li>)}
+              </ul>
+            </section>
+
+            <section className="mt-14">
+              <h2 className="font-display text-2xl">Things to work on</h2>
+              <ol className="mt-6 space-y-8">
                 {fb.improvements.map((imp, i) => (
-                  <div key={i}>
-                    <div className="flex items-center gap-2 font-medium">{i + 1}. {imp.observation} {imp.timestamp && <Badge>{imp.timestamp}</Badge>}</div>
-                    <p className="mt-1 text-sm text-muted">{imp.tip}</p>
-                  </div>
+                  <li key={i} className="grid grid-cols-[36px_1fr] gap-2">
+                    <span className="font-display text-2xl text-faint">{i + 1}</span>
+                    <div>
+                      <p className="text-[16px] leading-relaxed">{imp.observation}{imp.timestamp && <span className="ml-2 text-sm text-faint">at {imp.timestamp}</span>}</p>
+                      <p className="mt-2 rounded-2xl bg-accent-soft px-5 py-4 text-[15px] leading-relaxed text-fg/80">{imp.tip}</p>
+                    </div>
+                  </li>
                 ))}
-              </div>
-            </Card>
-            <p className="text-sm text-muted">{fb.closing}</p>
+              </ol>
+            </section>
+
+            <p className="mt-16 border-t border-line pt-8 text-[15px] leading-relaxed text-muted">{fb.closing}</p>
           </>
         )}
-      </main>
-    </>
+      </article>
+    </main>
   );
 }

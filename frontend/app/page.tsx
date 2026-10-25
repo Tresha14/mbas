@@ -1,51 +1,84 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Brain, Eye, LineChart, Lock, Mic, Users } from "lucide-react";
+import { ArrowRight, Eye, MessageSquareText, ShieldCheck } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Header } from "@/components/shell";
-import { Button, Card } from "@/components/ui";
+import { claims } from "@/lib/api";
+import { Button, Dot } from "@/components/ui";
 
-const features = [
-  { icon: Eye, title: "Attention & gaze", text: "Our own face, iris and gaze models track on-screen attention, glances away and reading patterns." },
-  { icon: Mic, title: "Live transcript", text: "A Conformer speech recogniser we trained from scratch transcribes each speaker with fillers highlighted." },
-  { icon: Brain, title: "Hesitation & speaking patterns", text: "Response delay, pauses, fillers, pace and pitch variation per answer." },
-  { icon: LineChart, title: "Answer quality", text: "Relevance, STAR structure and a 0-100 communication score with the top 3 reasons." },
-  { icon: Users, title: "Meeting mode", text: "Talk-time balance and engagement for every participant." },
-  { icon: Lock, title: "Interviewer-only analytics", text: "Candidates never see live scores; they get a reviewed feedback report afterwards." },
+const pillars = [
+  { icon: Eye, title: "Sees attention", text: "Gaze, glances and engagement from the webcam, measured by models we trained ourselves." },
+  { icon: MessageSquareText, title: "Hears the answer", text: "Live transcript, hesitation and speaking pace, then relevance and structure of every answer." },
+  { icon: ShieldCheck, title: "Fair by design", text: "Only the interviewer sees analytics. Candidates receive reviewed, constructive feedback." },
 ];
 
+function Preview() {
+  const rows = [["Attention", 82, "strong", "text-good"], ["Engagement", 71, "strong", "text-good"], ["Hesitation", 38, "low", "text-good"]] as const;
+  return (
+    <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.6 }}
+      className="relative rounded-[28px] border border-line bg-surface p-6 shadow-soft">
+      <div className="mb-5 flex items-center justify-between">
+        <span className="text-[13px] text-muted">Live · Software engineer, round 1</span>
+        <span className="flex items-center gap-2 text-[13px] text-muted"><Dot tone="good" pulse /> analysing</span>
+      </div>
+      <div className="mb-5 aspect-video rounded-2xl bg-gradient-to-br from-[#2a2a27] to-[#141413]" />
+      <div className="divide-y divide-line">
+        {rows.map(([l, v, w, c]) => (
+          <div key={l} className="flex items-center gap-4 py-3">
+            <span className="w-24 text-[13px] text-muted">{l}</span>
+            <span className="font-display text-2xl tabular-nums">{v}</span>
+            <svg className="h-6 flex-1" viewBox="0 0 120 24" preserveAspectRatio="none"><path d={`M0 ${24 - v / 6} C30 ${20 - v / 7}, 60 ${26 - v / 5}, 120 ${24 - v / 4.5}`} fill="none" stroke="var(--good)" strokeWidth="1.5" /></svg>
+            <span className={`w-16 text-right text-[13px] ${c}`}>{w}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 rounded-2xl bg-accent-soft px-4 py-3 text-[13px] text-accent">
+        Suggested follow-up: ask for a concrete example of the result.
+      </div>
+    </motion.div>
+  );
+}
+
 export default function Landing() {
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => { const c = claims(); setSignedIn(!!c && (c.role === "interviewer" || c.role === "meeting_host")); }, []);
   return (
     <>
-      <Header right={<Link href="/login"><Button size="sm">Sign in</Button></Link>} />
-      <main className="mx-auto max-w-6xl px-4 py-16">
-        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="max-w-3xl">
-          <p className="mb-3 text-sm font-medium text-accent">Multimodal Behavioural Analysis System</p>
-          <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
-            An interview and meeting copilot that analyses video, audio and conversation.
-          </h1>
-          <p className="mt-4 text-lg text-muted">
-            Attention, engagement, hesitation, speaking patterns and responses, combined into a communication-effectiveness
-            score with clear reasons and follow-up suggestions. Every model is trained by us from scratch.
-          </p>
-          <div className="mt-8 flex gap-3">
-            <Link href="/login"><Button size="lg">Start an interview</Button></Link>
-            <Link href="/login?mode=register"><Button size="lg" variant="outline">Create account</Button></Link>
-          </div>
-        </motion.section>
-        <section className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map(({ icon: Icon, title, text }) => (
-            <Card key={title}>
-              <Icon className="mb-3 text-accent" size={22} />
-              <h3 className="font-semibold">{title}</h3>
-              <p className="mt-1 text-sm text-muted">{text}</p>
-            </Card>
+      <Header nav={false} right={signedIn
+        ? <Link href="/dashboard"><Button size="sm" variant="outline">Open dashboard</Button></Link>
+        : <Link href="/login"><Button size="sm" variant="outline">Sign in</Button></Link>} />
+      <main className="mx-auto max-w-6xl px-6">
+        <section className="grid items-center gap-14 py-20 lg:grid-cols-[1.05fr_1fr] lg:py-28">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <p className="mb-5 text-[13px] tracking-wide text-accent">Multimodal Behavioural Analysis System</p>
+            <h1 className="font-display text-5xl leading-[1.05] tracking-tight sm:text-6xl">
+              Interviews that are <em className="text-accent">clearer</em> for both sides of the table.
+            </h1>
+            <p className="mt-6 max-w-lg text-[17px] leading-relaxed text-muted">
+              A quiet copilot for interviewers: it reads attention, engagement, hesitation and the substance of each answer,
+              and suggests what to ask next. Every model is trained from scratch on our own data.
+            </p>
+            <div className="mt-10 flex flex-wrap gap-3">
+              <Link href={signedIn ? "/dashboard" : "/login?mode=register"}><Button size="lg">{signedIn ? "Go to your interviews" : "Get started"} <ArrowRight size={16} /></Button></Link>
+              {!signedIn && <Link href="/login"><Button size="lg" variant="ghost">I have an account</Button></Link>}
+            </div>
+          </motion.div>
+          <Preview />
+        </section>
+        <section className="grid gap-10 border-t border-line py-16 sm:grid-cols-3">
+          {pillars.map(({ icon: Icon, title, text }) => (
+            <div key={title}>
+              <Icon size={20} className="mb-4 text-accent" strokeWidth={1.75} />
+              <h3 className="font-display text-xl">{title}</h3>
+              <p className="mt-2 text-[15px] leading-relaxed text-muted">{text}</p>
+            </div>
           ))}
         </section>
-        <p className="mt-12 text-xs text-muted">
-          Scores are decision support for the interviewer, never an automatic rejection. Recording requires the candidate&apos;s consent.
-        </p>
+        <footer className="border-t border-line py-10 text-[13px] text-faint">
+          Scores support the interviewer&apos;s judgement and never decide on their own. Recording requires the candidate&apos;s consent.
+        </footer>
       </main>
     </>
   );
