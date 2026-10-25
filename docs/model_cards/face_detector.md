@@ -1,6 +1,6 @@
 # Model card: Face + landmark detector (BlazeFace-style)
 
-_Generated 2026-10-25 by the training/evaluation scripts. Trained from random initialisation; no pre-trained weights._
+_Generated 2026-10-26 by the training/evaluation scripts. Trained from random initialisation; no pre-trained weights._
 
 ## Task
 
@@ -38,8 +38,8 @@ WIDER FACE train (90%) with RetinaFace 5-point landmarks; random face-centred sq
 | webcam-style crops AP@0.5 | 0.8574 |
 | webcam-style crops recall@0.5 | 0.7347 |
 | full images AP@0.5 (faces >= 8% of input) | 0.5345 |
-| landmark NME (val, inter-ocular) | 117.9912 |
-| CPU latency (torch, 4 threads) | 8.136 ms (122.9 fps) |
+| landmark NME (val, inter-ocular) | 0.3792 |
+| CPU latency (torch, 4 threads) | 10.546 ms (94.8 fps) |
 | PR curve | docs/metrics/face_detector_pr.png |
 
 ## Limitations

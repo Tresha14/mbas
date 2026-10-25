@@ -1,6 +1,6 @@
 {
   "model": "face_detector",
-  "generated": "2026-10-25T22:10:36",
+  "generated": "2026-10-26T00:32:53",
   "full_image": {
     "images": 3226,
     "faces_scored": 3466,
@@ -8,6 +8,7 @@
     "recall@score0.5": 0.3987,
     "precision@score0.5": 0.8831,
     "landmark_NME": null,
+    "landmark_NME_median": null,
     "landmark_faces": 0
   },
   "webcam_crops": {
@@ -17,6 +18,7 @@
     "recall@score0.5": 0.7347,
     "precision@score0.5": 0.9443,
     "landmark_NME": null,
+    "landmark_NME_median": null,
     "landmark_faces": 0
   },
   "landmarks_val": {
@@ -25,13 +27,14 @@
     "AP@0.5": 0.5299,
     "recall@score0.5": 0.3961,
     "precision@score0.5": 0.875,
-    "landmark_NME": 117.9912,
-    "landmark_faces": 947
+    "landmark_NME": 0.3792,
+    "landmark_NME_median": 0.2827,
+    "landmark_faces": 863
   },
   "cpu_latency_torch_4threads": {
-    "median_ms": 8.136,
-    "p90_ms": 8.701,
-    "fps": 122.9
+    "median_ms": 10.546,
+    "p90_ms": 12.266,
+    "fps": 94.8
   },
   "params": 382740
 }
