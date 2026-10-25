@@ -34,8 +34,10 @@ switch ($Target) {
     }
     "datasets" { & $Py -m tools.datasets.download_all }
     "splits" { & $Py -m tools.make_splits }
+    "data" { & $Py -m ml.common.make_data }
+    "eda" { & $Py notebooks\make_eda.py }
     "stats" { & $Py -m tools.dataset_stats }
     default {
-        Write-Output "targets: venv install up down ps questions recorder-api recorder-web-install recorder-web check <dir> test labelstudio labelstudio-import labels datasets splits stats"
+        Write-Output "targets: venv install up down ps questions recorder-api recorder-web-install recorder-web check <dir> test labelstudio labelstudio-import labels datasets splits stats data eda"
     }
 }

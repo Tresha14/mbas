@@ -5,7 +5,7 @@ else
 PY ?= .venv/bin/python
 endif
 
-.PHONY: help venv install torch-cuda up down ps recorder-api recorder-web recorder-web-install questions check test \n	labelstudio labelstudio-import labels datasets splits stats
+.PHONY: help venv install torch-cuda up down ps recorder-api recorder-web recorder-web-install questions check test \n	labelstudio labelstudio-import labels datasets splits stats data eda
 
 help:
 	@echo "venv / install / torch-cuda  set up Python env"
@@ -20,6 +20,8 @@ help:
 	@echo "labels                       export labels, kappa, splits, dataset card"
 	@echo "datasets                     download + convert the automatic public datasets"
 	@echo "splits / stats               person-wise splits / docs/dataset_card.md"
+	@echo "data                         Stage 3 pipeline: labels, splits, windows, tokenizers, dataset check"
+	@echo "eda                          build + run notebooks/eda.ipynb"
 
 venv:
 	python -m venv .venv
@@ -81,3 +83,9 @@ splits:
 
 stats:
 	$(PY) -m tools.dataset_stats
+
+data:
+	$(PY) -m ml.common.make_data
+
+eda:
+	$(PY) notebooks/make_eda.py

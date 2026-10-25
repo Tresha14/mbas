@@ -1,0 +1,20 @@
+{
+  "source": "public/ami",
+  "seed": 42,
+  "ratios": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "participants": {
+    "train": 133,
+    "val": 29,
+    "test": 28
+  },
+  "sessions": {
+    "train": 474,
+    "val": 104,
+    "test": 104
+  },
+  "leakage_problems": []
+}

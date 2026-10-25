@@ -19,7 +19,7 @@ import soundfile as sf
 from tools.datasets.common import dirs, download, extract, rel, write_outputs
 
 NAME = "librispeech"
-BASE = "https://www.openslr.org/resources/12/"
+BASE = "https://openslr.trmal.net/resources/12/"  # OpenSLR mirror, ~4x faster from India than www.openslr.org
 SIZES = {"train-clean-100": 6387309499, "dev-clean": 337926286, "test-clean": 346663984}
 SPLIT = {"train-clean-100": "train", "train-clean-360": "train", "dev-clean": "val", "test-clean": "test"}
 

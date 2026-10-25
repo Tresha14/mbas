@@ -13,7 +13,7 @@ initialisation on our own recorded dataset plus public raw datasets.
 | --- | --- | --- |
 | 1 | Repo skeleton, docker compose, dataset recorder, `check_session.py` | done (see below) |
 | 2 | Dataset protocol, annotation, public datasets, splits | tools done; recording + labelling in progress (see `docs/dataset_card.md`) |
-| 3 | Data pipeline + features (`ml/common`) | – |
+| 3 | Data pipeline + features (`ml/common`) | done: `.	asks.ps1 data` |
 | 4–5 | Vision: face/eye/iris, head pose, engagement, attention | – |
 | 6 | VAD + Conformer-CTC ASR + KenLM | – |
 | 7 | Hesitation, prosody, speaking patterns, conversation | – |
@@ -156,6 +156,21 @@ Label Studio 1.23 disables legacy API tokens, so the tools log in with the usern
 
 The synthetic dataset's meeting-level `split` column is not person-wise (some meeting participants are interview
 test participants); `make_splits` therefore assigns meeting rows by participant and marks such meetings `mixed`.
+
+## Stage 3: data pipeline and features
+
+`.	asks.ps1 data` (= `python -m ml.common.make_data`) turns everything into model-ready tables; `.	asks.ps1 eda`
+rebuilds `notebooks/eda.ipynb`.
+
+| Module (`ml/common/`) | Content |
+| --- | --- |
+| `sync.py` | `SessionClock`: webcam frame times, audio slices and events on the shared session clock |
+| `windowing.py` | 5 s / 2.5 s windows with labels, hesitation counts and person-wise split |
+| `video_features.py` | ffmpeg/OpenCV decoding at 15 fps, letterbox, normalisation, augmentation (flip mirrors gaze yaw) |
+| `audio_features.py` | 80-band log-mel (25/10 ms), MFCC-40, YIN pitch, RMS, SpecAugment, speed perturbation, noise |
+| `text.py` | ASR text normalisation; SentencePiece unigram tokenizers (asr 1000, answer 8000) trained from scratch |
+| `datasets.py` | Face, Gaze, EngagementClip, VAD, ASR, Disfluency, Answer, Fusion datasets |
+| `config.py` | paths, seeds, YAML configs with `key=value` overrides |
 
 ## Tests
 
