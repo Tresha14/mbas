@@ -20,7 +20,7 @@ import numpy as np
 
 from backend.bus import make_bus
 from backend.config import settings
-from backend.db import AnswerScore, Database, FollowUp, TranscriptSegment, WindowScore, row_dict, select
+from backend.db import AnswerScore, Database, FollowUp, TranscriptSegment, WindowScore, clean_json, row_dict, select
 from backend.features import assemble
 from backend.inference import Models, Timer
 from ml.behaviour.answer_behaviour import answer_behaviour
@@ -238,9 +238,9 @@ class InterviewSpeech:
         with self.db.session() as s:
             s.add(AnswerScore(interview_id=self.id, question_ref=ev["question_ref"],
                               effectiveness=fus["effectiveness"] if fus else None,
-                              subscores=fus["subscores"] if fus else {}, answer_model=ans or {}, behaviour=beh,
-                              reasons=fus["reasons"] if fus else [], modality_weights=fus["modality_weights"] if fus else {},
-                              transcript=transcript))
+                              subscores=clean_json(fus["subscores"]) if fus else {}, answer_model=clean_json(ans or {}),
+                              behaviour=clean_json(beh), reasons=clean_json(fus["reasons"]) if fus else [],
+                              modality_weights=clean_json(fus["modality_weights"]) if fus else {}, transcript=transcript))
             fu_list = []
             if fus and fus["follow_up_p"] >= 0.5 and fus["reason"] != "none":
                 fu_list.append(("model", fus["reason"], fus["follow_up_p"], fus["reasons"][0]["text"] if fus["reasons"] else ""))
@@ -254,7 +254,7 @@ class InterviewSpeech:
                                                          "t_s": end, "reason": reason, "probability": round(p, 3),
                                                          "source": src, "text": text})
             s.commit()
-        self.bus.publish(f"analytics:{self.id}", out)
+        self.bus.publish(f"analytics:{self.id}", clean_json(out))
         self.bus.set_metric("e2e_answer_analysis", (time.time() - t_start) * 1000)
 
     def audio_events(self, cand: Track, t0: float, t1: float) -> dict:
@@ -306,27 +306,36 @@ def run(bus=None, db=None, stop=lambda: False):
     while not stop():
         for name, mid, msg, binary in bus.read(dict(cursors), 500, 100):
             cursors[name] = mid
-            if name == "control":
-                iid = msg.get("interview_id")
-                if msg["type"] == "start":
-                    live[iid] = InterviewSpeech(iid, msg.get("mode", "interview"), bus, db, models)
-                    for k in [k for k in list(cursors) if k.startswith(f"audio:{iid}:")]:
-                        cursors.pop(k)
-                    cursors[f"audio:{iid}:candidate"] = bus.last_id(f"audio:{iid}:candidate")
-                    cursors[f"audio:{iid}:interviewer"] = bus.last_id(f"audio:{iid}:interviewer")
-                elif msg["type"] == "answer_end" and iid in live:
-                    live[iid].answer_end(msg)
-                elif msg["type"] == "stop" and iid in live:
-                    for t in live[iid].tracks.values():
-                        if t.asr is not None:
-                            for r in t.asr.flush():
-                                live[iid].transcript(t.name, r, {"captured_at": time.time()})
-                    live.pop(iid)
-            elif name.startswith("audio:") and binary is not None:
-                _, iid, role = name.split(":", 2)
-                if int(iid) in live:
-                    live[int(iid)].audio(role, msg, binary)
+            try:
+                handle(name, msg, binary, bus, db, models, live, cursors)
+            except Exception:  # noqa: BLE001 - one bad message must not stop the worker
+                import traceback
 
+                traceback.print_exc()
+
+
+def handle(name, msg, binary, bus, db, models, live, cursors):
+    """One bus message: control events (start / answer_end / stop) or a 640 ms audio chunk."""
+    if name == "control":
+        iid = msg.get("interview_id")
+        if msg["type"] == "start":
+            live[iid] = InterviewSpeech(iid, msg.get("mode", "interview"), bus, db, models)
+            for k in [k for k in list(cursors) if k.startswith(f"audio:{iid}:")]:
+                cursors.pop(k)
+            cursors[f"audio:{iid}:candidate"] = bus.last_id(f"audio:{iid}:candidate")
+            cursors[f"audio:{iid}:interviewer"] = bus.last_id(f"audio:{iid}:interviewer")
+        elif msg["type"] == "answer_end" and iid in live:
+            live[iid].answer_end(msg)
+        elif msg["type"] == "stop" and iid in live:
+            for t in live[iid].tracks.values():
+                if t.asr is not None:
+                    for r in t.asr.flush():
+                        live[iid].transcript(t.name, r, {"captured_at": time.time()})
+            live.pop(iid)
+    elif name.startswith("audio:") and binary is not None:
+        _, iid, role = name.split(":", 2)
+        if int(iid) in live:
+            live[int(iid)].audio(role, msg, binary)
 
 if __name__ == "__main__":
     run()

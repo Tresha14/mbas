@@ -151,6 +151,24 @@ class Database:
         return self.Session()
 
 
+def clean_json(v):
+    """NaN / inf -> None and numpy scalars -> Python numbers, recursively (PostgreSQL JSON rejects NaN)."""
+    import math
+
+    if isinstance(v, dict):
+        return {str(k): clean_json(x) for k, x in v.items()}
+    if isinstance(v, (list, tuple)):
+        return [clean_json(x) for x in v]
+    if hasattr(v, "item") and not isinstance(v, (str, bytes)):
+        try:
+            v = v.item()
+        except (ValueError, AttributeError):
+            pass
+    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+        return None
+    return v
+
+
 def row_dict(obj) -> dict:
     out = {}
     for c in obj.__table__.columns:

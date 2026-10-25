@@ -17,7 +17,7 @@ import numpy as np
 
 from backend.bus import make_bus
 from backend.config import settings
-from backend.db import Database, WindowScore
+from backend.db import Database, WindowScore, clean_json
 
 HOP_S, WIN_S = 2.5, 5.0
 
@@ -70,7 +70,7 @@ class InterviewVision:
         with self.db.session() as s:
             s.add(WindowScore(interview_id=self.id, start_s=round(t - WIN_S, 2), end_s=round(t, 2),
                               attention=f.get("attention_score"), engagement=f.get("engagement_label"),
-                              on_screen_ratio=f.get("on_screen_ratio"), features=clean))
+                              on_screen_ratio=f.get("on_screen_ratio"), features=clean_json(clean)))
             s.commit()
         self.bus.publish(f"analytics:{self.id}", {"kind": "window", "start_s": round(t - WIN_S, 2), "end_s": round(t, 2),
                                                  "attention": f.get("attention_score"), "engagement": f.get("engagement_label"),
@@ -106,7 +106,12 @@ def run(bus=None, db=None, stop=lambda: False):
             elif name.startswith("frames:") and binary is not None:
                 iid = int(name.split(":")[1])
                 if iid in live:
-                    live[iid].frame(msg, binary)
+                    try:
+                        live[iid].frame(msg, binary)
+                    except Exception:  # noqa: BLE001 - keep serving the other frames
+                        import traceback
+
+                        traceback.print_exc()
 
 
 if __name__ == "__main__":

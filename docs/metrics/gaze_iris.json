@@ -1,0 +1,35 @@
+{
+  "model": "gaze_iris",
+  "generated": "2026-10-25T20:32:43",
+  "split": "test",
+  "samples": 18075,
+  "persons": [
+    "p05",
+    "p13"
+  ],
+  "angular_error_mean_deg": 5.284,
+  "angular_error_median_deg": 5.188,
+  "angular_error_per_person_deg": {
+    "p05": 5.198,
+    "p13": 6.232
+  },
+  "iris_l1_vs_eyeball_model": 0.012,
+  "iris_model": {
+    "ax": 0.48728672809456614,
+    "bx": -0.22662725765336847,
+    "ay": 0.40219017641269905,
+    "by": -0.1708512532725962,
+    "n": 11842,
+    "corr_x_yaw": -0.307,
+    "corr_y_pitch": -0.211
+  },
+  "params": 1141287,
+  "baseline_mean_gaze_error_deg": 9.635,
+  "onscreen_f1": null,
+  "onscreen_note": "no on/off-screen labels in MPIIGaze; F1 is reported once our labelled windows / Columbia Gaze exist. Live on/off uses the per-session calibration box.",
+  "cpu_latency_torch_4threads": {
+    "median_ms": 36.602,
+    "p90_ms": 41.276,
+    "fps": 27.3
+  }
+}

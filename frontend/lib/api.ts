@@ -28,7 +28,8 @@ export interface Question {
 const KEY = "mbas_token";
 
 export function getToken(): string | null {
-  return typeof window === "undefined" ? null : localStorage.getItem(KEY) ?? sessionStorage.getItem(KEY);
+  // the per-tab candidate token (sessionStorage) wins over a stored interviewer login in the same browser
+  return typeof window === "undefined" ? null : sessionStorage.getItem(KEY) ?? localStorage.getItem(KEY);
 }
 
 export function setToken(token: string, session = false) {
