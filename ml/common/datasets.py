@@ -89,7 +89,9 @@ class FaceDataset(Dataset):
         for r in m.itertuples(index=False):
             lm = json.loads(r.landmarks) if has_lm else []
             if lm:   # RetinaFace boxes + landmarks (same faces as the official train boxes)
-                faces = np.array([f[:14] + [f[14]] for f in lm if min(f[2], f[3]) >= min_face], np.float32)
+                # RetinaFace writes -1 for a missing landmark: such a face keeps its box but gets no landmark target
+                faces = np.array([f[:14] + [f[14] if min(f[4:14]) >= 0 else 0.0] for f in lm
+                                  if min(f[2], f[3]) >= min_face], np.float32)
             else:
                 faces = np.array([b[:4] + [0.0] * 10 + [0.0] for b in json.loads(r.boxes)
                                   if b[7] == 0 and min(b[2], b[3]) >= min_face], np.float32)

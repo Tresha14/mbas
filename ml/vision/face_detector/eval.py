@@ -74,8 +74,10 @@ def evaluate(model, ds, dev, large: float, score_thr: float, iou_thr: float = 0.
                             hits_at_thr += int(sc[j] >= score_thr)
                             if km[g] > 0:
                                 kg = kp[g].to(dev)
-                                iod = torch.linalg.norm(kg[0] - kg[1]).clamp(min=1e-6)
-                                nme.append(float(torch.linalg.norm(k[j] - kg, dim=-1).mean() / iod))
+                                iod = torch.linalg.norm(kg[0] - kg[1])
+                                # skip annotations whose eyes nearly coincide (profile faces): the ratio explodes
+                                if iod >= 0.2 * (gt[g, 2] - gt[g, 0]):
+                                    nme.append(float(torch.linalg.norm(k[j] - kg, dim=-1).mean() / iod))
                         continue                 # matches to small faces are ignored
                     if iou[j].max() >= iou_thr:  # duplicate on an already matched face
                         all_scores.append(float(sc[j]))
@@ -90,7 +92,8 @@ def evaluate(model, ds, dev, large: float, score_thr: float, iou_thr: float = 0.
     return {"images": len(ds), "faces_scored": n_gt, "AP@0.5": round(ap, 4),
             f"recall@score{score_thr}": round(hits_at_thr / max(n_gt, 1), 4),
             f"precision@score{score_thr}": round(float(tp[keep].mean()) if keep.any() else 0.0, 4),
-            "landmark_NME": round(float(np.mean(nme)), 4) if nme else None, "landmark_faces": len(nme),
+            "landmark_NME": round(float(np.mean(nme)), 4) if nme else None,
+            "landmark_NME_median": round(float(np.median(nme)), 4) if nme else None, "landmark_faces": len(nme),
             "_pr": (rec.tolist(), prec.tolist())}
 
 

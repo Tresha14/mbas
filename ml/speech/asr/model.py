@@ -103,10 +103,10 @@ def chunk_mask(T: int, chunk: int, left_chunks: int, device) -> torch.Tensor:
 
 class ConformerCTC(nn.Module):
     def __init__(self, vocab: int = 1000, d: int = 176, heads: int = 4, layers: int = 12, kernel: int = 31,
-                 n_mels: int = 80, dropout: float = 0.1):
+                 n_mels: int = 80, dropout: float = 0.1, time_masks: int = 5):
         super().__init__()
         self.front = LogMel(n_mels=n_mels)
-        self.specaug = SpecAugment(freq_masks=2, freq_width=27, time_masks=10, time_width=0.05)
+        self.specaug = SpecAugment(freq_masks=2, freq_width=27, time_masks=time_masks, time_width=0.05)
         self.sub = ConvSubsample(n_mels, d)
         self.pos = RelPositionalEncoding(d)
         self.drop = nn.Dropout(dropout)

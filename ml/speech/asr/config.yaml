@@ -7,6 +7,7 @@ model:
   layers: 12
   kernel: 31
   dropout: 0.1
+  time_masks: 5             # SpecAugment time masks (10 kept the model on the CTC blank plateau)
 data:
   sources: [librispeech, common_voice_in, recorded]
   max_s: 17.0
@@ -15,13 +16,14 @@ data:
   limit: null
 train:
   epochs: 40
-  peak_lr: 0.0015
-  warmup_steps: 6000
+  peak_lr: 0.0005           # 0.0015 diverged right after warm-up (blank-only output)
+  warmup_steps: 10000
   weight_decay: 0.001
-  grad_clip: 5.0
+  grad_clip: 1.0
   accum: 1
   amp: true
   dynamic_chunk_p: 0.5      # share of batches trained with chunked (streaming) attention
+  chunk_start_epoch: 10     # full attention first; streaming chunks once the model reads words
   chunk_choices: [8, 16, 24, 32]   # 40 ms frames: 320 / 640 / 960 / 1280 ms
   left_chunks: 4
   average_last: 5           # checkpoint averaging

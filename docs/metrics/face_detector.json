@@ -1,0 +1,37 @@
+{
+  "model": "face_detector",
+  "generated": "2026-10-25T22:10:36",
+  "full_image": {
+    "images": 3226,
+    "faces_scored": 3466,
+    "AP@0.5": 0.5345,
+    "recall@score0.5": 0.3987,
+    "precision@score0.5": 0.8831,
+    "landmark_NME": null,
+    "landmark_faces": 0
+  },
+  "webcam_crops": {
+    "images": 3226,
+    "faces_scored": 4613,
+    "AP@0.5": 0.8574,
+    "recall@score0.5": 0.7347,
+    "precision@score0.5": 0.9443,
+    "landmark_NME": null,
+    "landmark_faces": 0
+  },
+  "landmarks_val": {
+    "images": 1261,
+    "faces_scored": 1343,
+    "AP@0.5": 0.5299,
+    "recall@score0.5": 0.3961,
+    "precision@score0.5": 0.875,
+    "landmark_NME": 117.9912,
+    "landmark_faces": 947
+  },
+  "cpu_latency_torch_4threads": {
+    "median_ms": 8.136,
+    "p90_ms": 8.701,
+    "fps": 122.9
+  },
+  "params": 382740
+}

@@ -122,7 +122,8 @@ def main(argv: list[str] | None = None) -> int:
                        persistent_workers=dc["workers"] > 0, pin_memory=dev.type == "cuda")
     va_dl = DataLoader(va, batch_sampler=DurationBatchSampler(va.durations(), 400, shuffle=False),
                        collate_fn=asr_collate, num_workers=2)
-    model = ConformerCTC(len(tok), mc["d"], mc["heads"], mc["layers"], mc["kernel"], dropout=mc["dropout"]).to(dev)
+    model = ConformerCTC(len(tok), mc["d"], mc["heads"], mc["layers"], mc["kernel"], dropout=mc["dropout"],
+                         time_masks=mc.get("time_masks", 5)).to(dev)
     opt = torch.optim.AdamW(model.parameters(), lr=1e-4, betas=(0.9, 0.98), weight_decay=tc["weight_decay"])
     scaler = torch.amp.GradScaler(enabled=tc["amp"] and dev.type == "cuda")
     run = Run(cfg["name"], cfg, resume=args.resume)
@@ -142,18 +143,19 @@ def main(argv: list[str] | None = None) -> int:
         model.train()
         tl, nb = 0.0, 0
         for b in tr_dl:
-            chunk = rng.choice(tc["chunk_choices"]) if rng.random() < tc["dynamic_chunk_p"] else None
+            chunk = (rng.choice(tc["chunk_choices"])
+                     if epoch >= tc.get("chunk_start_epoch", 0) and rng.random() < tc["dynamic_chunk_p"] else None)
             set_lr(opt, noam_lr(step + 1, mc["d"], tc["warmup_steps"], factor))
             with torch.autocast(dev.type, enabled=tc["amp"] and dev.type == "cuda"):
                 loss, _, _ = ctc_loss(model, b, dev, chunk, tc["left_chunks"])
             opt.zero_grad(set_to_none=True)
             scaler.scale(loss).backward()
             scaler.unscale_(opt)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), tc["grad_clip"])
+            gnorm = torch.nn.utils.clip_grad_norm_(model.parameters(), tc["grad_clip"])
             scaler.step(opt)
             scaler.update()
             if step % 50 == 0:
-                run.scalars(step, **{"train/ctc": loss.item(), "lr": opt.param_groups[0]["lr"]})
+                run.scalars(step, **{"train/ctc": loss.item(), "lr": opt.param_groups[0]["lr"], "train/grad_norm": float(gnorm)})
             tl += loss.item()
             nb += 1
             step += 1

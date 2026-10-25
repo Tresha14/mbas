@@ -1,0 +1,17 @@
+{
+  "model": "vad",
+  "generated": "2026-10-25T22:51:47",
+  "test": {
+    "frame_f1_raw": 0.9726,
+    "frame_f1_smoothed": 0.9547,
+    "energy_baseline_f1": 0.7818,
+    "speech_fraction": 0.7084,
+    "frames": 801000
+  },
+  "params": 45377,
+  "cpu_latency_640ms_chunk": {
+    "median_ms": 3.473,
+    "p90_ms": 5.33,
+    "fps": 288.0
+  }
+}
