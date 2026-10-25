@@ -72,7 +72,9 @@ def main(argv: list[str] | None = None) -> int:
     run = Run(cfg["name"], cfg, resume=args.resume)
     start, step, best = 1, 0, float("inf")
     if args.resume and (st := run.load_last()):
-        model.load_state_dict(st["model"]), opt.load_state_dict(st["opt"])
+        # front end has no learned weights; older checkpoints stored torchaudio's buffers
+        model.load_state_dict({k: v for k, v in st["model"].items() if not k.startswith("front.")}, strict=False)
+        opt.load_state_dict(st["opt"])
         start, step, best = st["epoch"] + 1, st["step"], st["best"]
     total = tc["epochs"] * len(tr_dl)
     sched = lambda s: cosine_lr(s, total, tc["lr"], tc["warmup_steps"])  # noqa: E731

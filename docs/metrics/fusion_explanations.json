@@ -1,0 +1,927 @@
+[
+  {
+    "answer_id": "S0022_A01",
+    "effectiveness": 56.7,
+    "true_effectiveness": 72.7,
+    "follow_up_p": 0.999,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.4309999942779541,
+      "prosody": 0.009999999776482582,
+      "hesitation": 0.02199999988079071,
+      "content": 0.531000018119812,
+      "conversation": 0.004999999888241291
+    },
+    "top_reasons": [
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": 3.036,
+        "raw_value": 0.6326817274093628,
+        "text": "covered the expected points (63%)"
+      },
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": 2.858,
+        "raw_value": 3.57,
+        "text": "fluent delivery"
+      },
+      {
+        "feature": "hedge_count",
+        "modality": "hesitation",
+        "contribution": -2.818,
+        "raw_value": 3.0,
+        "text": "3 hedges (I think, maybe, not sure)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0022_A02",
+    "effectiveness": 54.1,
+    "true_effectiveness": 59.9,
+    "follow_up_p": 0.996,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.17800000309944153,
+      "prosody": 0.024000000208616257,
+      "hesitation": 0.2759999930858612,
+      "content": 0.5189999938011169,
+      "conversation": 0.004000000189989805
+    },
+    "top_reasons": [
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": 3.527,
+        "raw_value": 0.6796531081199646,
+        "text": "covered the expected points (68%)"
+      },
+      {
+        "feature": "answer_duration_s",
+        "modality": "content",
+        "contribution": -2.504,
+        "raw_value": 46.66,
+        "text": "answer length (47 s) worked against it"
+      },
+      {
+        "feature": "speech_rate_variability",
+        "modality": "prosody",
+        "contribution": -1.943,
+        "raw_value": 0.191,
+        "text": "speech rate variability lowered the score"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0022_A03",
+    "effectiveness": 45.7,
+    "true_effectiveness": 56.5,
+    "follow_up_p": 0.998,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.7789999842643738,
+      "prosody": 0.01600000075995922,
+      "hesitation": 0.1679999977350235,
+      "content": 0.035999998450279236,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -5.036,
+        "raw_value": 10.14,
+        "text": "many disfluencies (10.1 per 100 words)"
+      },
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": 4.613,
+        "raw_value": 0.8040752410888672,
+        "text": "covered the expected points (80%)"
+      },
+      {
+        "feature": "reading_pattern_detected",
+        "modality": "vision",
+        "contribution": -3.438,
+        "raw_value": 1.0,
+        "text": "eye movements look like reading from another screen"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0022_A04",
+    "effectiveness": 64.3,
+    "true_effectiveness": 64.1,
+    "follow_up_p": 0.998,
+    "reason": "attention_drop",
+    "modality_weights": {
+      "vision": 0.9909999966621399,
+      "prosody": 0.006000000052154064,
+      "hesitation": 0.0010000000474974513,
+      "content": 0.0020000000949949026,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": 5.23,
+        "raw_value": 0.7995810508728027,
+        "text": "covered the expected points (80%)"
+      },
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": 4.578,
+        "raw_value": 2.27,
+        "text": "fluent delivery"
+      },
+      {
+        "feature": "ans_relevance",
+        "modality": "content",
+        "contribution": 3.043,
+        "raw_value": 0.7272361516952515,
+        "text": "answer stayed on the question (relevance 0.73)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0022_A05",
+    "effectiveness": 44.4,
+    "true_effectiveness": 55.5,
+    "follow_up_p": 0.999,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.734000027179718,
+      "prosody": 0.06499999761581421,
+      "hesitation": 0.00800000037997961,
+      "content": 0.19200000166893005,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -3.306,
+        "raw_value": 0.413,
+        "text": "looked away from the screen often (on screen 41%)"
+      },
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -2.038,
+        "raw_value": 7.69,
+        "text": "many disfluencies (7.7 per 100 words)"
+      },
+      {
+        "feature": "mean_gaze_yaw_std_deg",
+        "modality": "vision",
+        "contribution": -1.527,
+        "raw_value": 7.88,
+        "text": "mean gaze yaw std deg lowered the score"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0022_A06",
+    "effectiveness": 36.0,
+    "true_effectiveness": 26.7,
+    "follow_up_p": 1.0,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.5059999823570251,
+      "prosody": 0.014999999664723873,
+      "hesitation": 0.05000000074505806,
+      "content": 0.42800000309944153,
+      "conversation": 0.0
+    },
+    "top_reasons": [
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": -4.159,
+        "raw_value": 0.08586752414703369,
+        "text": "missed expected points (covered 9%)"
+      },
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -3.505,
+        "raw_value": 9.8,
+        "text": "many disfluencies (9.8 per 100 words)"
+      },
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -3.15,
+        "raw_value": 0.382,
+        "text": "looked away from the screen often (on screen 38%)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0022_A07",
+    "effectiveness": 38.1,
+    "true_effectiveness": 34.9,
+    "follow_up_p": 1.0,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.7129999995231628,
+      "prosody": 0.009999999776482582,
+      "hesitation": 0.035999998450279236,
+      "content": 0.2409999966621399,
+      "conversation": 0.0
+    },
+    "top_reasons": [
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -3.698,
+        "raw_value": 0.375,
+        "text": "looked away from the screen often (on screen 38%)"
+      },
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -3.596,
+        "raw_value": 9.09,
+        "text": "many disfluencies (9.1 per 100 words)"
+      },
+      {
+        "feature": "filler_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -3.384,
+        "raw_value": 9.09,
+        "text": "frequent fillers (9.1 per 100 words)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0022_A08",
+    "effectiveness": 53.2,
+    "true_effectiveness": 59.3,
+    "follow_up_p": 0.977,
+    "reason": "attention_drop",
+    "modality_weights": {
+      "vision": 0.9179999828338623,
+      "prosody": 0.05400000140070915,
+      "hesitation": 0.0,
+      "content": 0.02800000086426735,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": 4.114,
+        "raw_value": 3.33,
+        "text": "fluent delivery"
+      },
+      {
+        "feature": "answer_duration_s",
+        "modality": "content",
+        "contribution": 3.057,
+        "raw_value": 13.72,
+        "text": "answer length was appropriate (14 s)"
+      },
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -2.795,
+        "raw_value": 0.395,
+        "text": "looked away from the screen often (on screen 40%)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0022_A09",
+    "effectiveness": 42.0,
+    "true_effectiveness": 39.8,
+    "follow_up_p": 0.999,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.5149999856948853,
+      "prosody": 0.007000000216066837,
+      "hesitation": 0.24199999868869781,
+      "content": 0.23499999940395355,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -3.487,
+        "raw_value": 0.369,
+        "text": "looked away from the screen often (on screen 37%)"
+      },
+      {
+        "feature": "response_latency_s",
+        "modality": "hesitation",
+        "contribution": -3.427,
+        "raw_value": 6.64,
+        "text": "long pause before answering (6.6 s)"
+      },
+      {
+        "feature": "keyword_overlap",
+        "modality": "content",
+        "contribution": -1.979,
+        "raw_value": 0.0,
+        "text": "few key terms of the topic"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0022_A10",
+    "effectiveness": 38.8,
+    "true_effectiveness": 26.6,
+    "follow_up_p": 1.0,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.6069999933242798,
+      "prosody": 0.012000000104308128,
+      "hesitation": 0.0,
+      "content": 0.38100001215934753,
+      "conversation": 0.0
+    },
+    "top_reasons": [
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": -4.02,
+        "raw_value": 0.08158469945192337,
+        "text": "missed expected points (covered 8%)"
+      },
+      {
+        "feature": "ans_relevance",
+        "modality": "content",
+        "contribution": -2.698,
+        "raw_value": 0.10542929917573929,
+        "text": "answer drifted from the question (relevance 0.11)"
+      },
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -2.553,
+        "raw_value": 0.406,
+        "text": "looked away from the screen often (on screen 41%)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0022_A11",
+    "effectiveness": 45.0,
+    "true_effectiveness": 44.6,
+    "follow_up_p": 1.0,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.9039999842643738,
+      "prosody": 0.004999999888241291,
+      "hesitation": 0.00800000037997961,
+      "content": 0.08100000023841858,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -4.609,
+        "raw_value": 0.34,
+        "text": "looked away from the screen often (on screen 34%)"
+      },
+      {
+        "feature": "speaking_rate_wpm",
+        "modality": "prosody",
+        "contribution": 2.903,
+        "raw_value": 150.9,
+        "text": "comfortable speaking pace (151 wpm)"
+      },
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -1.789,
+        "raw_value": 7.41,
+        "text": "many disfluencies (7.4 per 100 words)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A01",
+    "effectiveness": 49.5,
+    "true_effectiveness": 44.4,
+    "follow_up_p": 0.961,
+    "reason": "contradiction",
+    "modality_weights": {
+      "vision": 0.052000001072883606,
+      "prosody": 0.007000000216066837,
+      "hesitation": 0.32899999618530273,
+      "content": 0.6110000014305115,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -6.153,
+        "raw_value": 12.99,
+        "text": "many disfluencies (13.0 per 100 words)"
+      },
+      {
+        "feature": "filler_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -3.617,
+        "raw_value": 9.09,
+        "text": "frequent fillers (9.1 per 100 words)"
+      },
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": 3.454,
+        "raw_value": 0.7184870839118958,
+        "text": "covered the expected points (72%)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A02",
+    "effectiveness": 46.0,
+    "true_effectiveness": 46.0,
+    "follow_up_p": 0.982,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.2980000078678131,
+      "prosody": 0.11100000143051147,
+      "hesitation": 0.052000001072883606,
+      "content": 0.5379999876022339,
+      "conversation": 0.0020000000949949026
+    },
+    "top_reasons": [
+      {
+        "feature": "filler_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -3.887,
+        "raw_value": 8.89,
+        "text": "frequent fillers (8.9 per 100 words)"
+      },
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -3.442,
+        "raw_value": 8.89,
+        "text": "many disfluencies (8.9 per 100 words)"
+      },
+      {
+        "feature": "speaking_rate_wpm",
+        "modality": "prosody",
+        "contribution": 2.046,
+        "raw_value": 135.4,
+        "text": "comfortable speaking pace (135 wpm)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A03",
+    "effectiveness": 49.0,
+    "true_effectiveness": 43.1,
+    "follow_up_p": 0.98,
+    "reason": "attention_drop",
+    "modality_weights": {
+      "vision": 0.824999988079071,
+      "prosody": 0.013000000268220901,
+      "hesitation": 0.1420000046491623,
+      "content": 0.017000000923871994,
+      "conversation": 0.0020000000949949026
+    },
+    "top_reasons": [
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -6.394,
+        "raw_value": 13.21,
+        "text": "many disfluencies (13.2 per 100 words)"
+      },
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": 5.613,
+        "raw_value": 0.861990213394165,
+        "text": "covered the expected points (86%)"
+      },
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -3.522,
+        "raw_value": 0.392,
+        "text": "looked away from the screen often (on screen 39%)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A04",
+    "effectiveness": 58.7,
+    "true_effectiveness": 45.7,
+    "follow_up_p": 0.999,
+    "reason": "contradiction",
+    "modality_weights": {
+      "vision": 0.6769999861717224,
+      "prosody": 0.013000000268220901,
+      "hesitation": 0.0010000000474974513,
+      "content": 0.3089999854564667,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "ans_reason_contradiction",
+        "modality": "content",
+        "contribution": 3.8,
+        "raw_value": 0.9645982980728149,
+        "text": "consistent statements"
+      },
+      {
+        "feature": "reading_pattern_detected",
+        "modality": "vision",
+        "contribution": -2.942,
+        "raw_value": 1.0,
+        "text": "eye movements look like reading from another screen"
+      },
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": 2.861,
+        "raw_value": 0.6483334898948669,
+        "text": "covered the expected points (65%)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A05",
+    "effectiveness": 37.5,
+    "true_effectiveness": 21.9,
+    "follow_up_p": 0.998,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.550000011920929,
+      "prosody": 0.0020000000949949026,
+      "hesitation": 0.23600000143051147,
+      "content": 0.21199999749660492,
+      "conversation": 0.0
+    },
+    "top_reasons": [
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": -4.351,
+        "raw_value": 0.07065261900424957,
+        "text": "missed expected points (covered 7%)"
+      },
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -4.309,
+        "raw_value": 9.8,
+        "text": "many disfluencies (9.8 per 100 words)"
+      },
+      {
+        "feature": "ans_relevance",
+        "modality": "content",
+        "contribution": -2.924,
+        "raw_value": 0.08629979938268661,
+        "text": "answer drifted from the question (relevance 0.09)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A06",
+    "effectiveness": 35.2,
+    "true_effectiveness": 38.1,
+    "follow_up_p": 1.0,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.8939999938011169,
+      "prosody": 0.00800000037997961,
+      "hesitation": 0.0020000000949949026,
+      "content": 0.0949999988079071,
+      "conversation": 0.0
+    },
+    "top_reasons": [
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -6.297,
+        "raw_value": 12.0,
+        "text": "many disfluencies (12.0 per 100 words)"
+      },
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -4.452,
+        "raw_value": 0.37,
+        "text": "looked away from the screen often (on screen 37%)"
+      },
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": -3.768,
+        "raw_value": 0.07927259802818298,
+        "text": "missed expected points (covered 8%)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A07",
+    "effectiveness": 51.0,
+    "true_effectiveness": 56.5,
+    "follow_up_p": 0.919,
+    "reason": "attention_drop",
+    "modality_weights": {
+      "vision": 0.9670000076293945,
+      "prosody": 0.00800000037997961,
+      "hesitation": 0.0010000000474974513,
+      "content": 0.024000000208616257,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -3.488,
+        "raw_value": 0.39,
+        "text": "looked away from the screen often (on screen 39%)"
+      },
+      {
+        "feature": "ans_follow_up_p",
+        "modality": "content",
+        "contribution": 3.197,
+        "raw_value": 0.24841755628585815,
+        "text": "ans follow up p helped"
+      },
+      {
+        "feature": "speech_rate_variability",
+        "modality": "prosody",
+        "contribution": -2.166,
+        "raw_value": 0.209,
+        "text": "speech rate variability lowered the score"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A08",
+    "effectiveness": 42.2,
+    "true_effectiveness": 29.6,
+    "follow_up_p": 0.994,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.27399998903274536,
+      "prosody": 0.024000000208616257,
+      "hesitation": 0.017999999225139618,
+      "content": 0.6819999814033508,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -3.633,
+        "raw_value": 9.26,
+        "text": "many disfluencies (9.3 per 100 words)"
+      },
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": -3.221,
+        "raw_value": 0.15812744200229645,
+        "text": "missed expected points (covered 16%)"
+      },
+      {
+        "feature": "ans_relevance",
+        "modality": "content",
+        "contribution": -2.521,
+        "raw_value": 0.1563677191734314,
+        "text": "answer drifted from the question (relevance 0.16)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A09",
+    "effectiveness": 47.3,
+    "true_effectiveness": 41.0,
+    "follow_up_p": 0.998,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.5320000052452087,
+      "prosody": 0.05299999937415123,
+      "hesitation": 0.004999999888241291,
+      "content": 0.4090000092983246,
+      "conversation": 0.0010000000474974513
+    },
+    "top_reasons": [
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -2.518,
+        "raw_value": 0.443,
+        "text": "looked away from the screen often (on screen 44%)"
+      },
+      {
+        "feature": "speaking_rate_wpm",
+        "modality": "prosody",
+        "contribution": -2.404,
+        "raw_value": 94.2,
+        "text": "speaking pace of 94 words per minute"
+      },
+      {
+        "feature": "keyword_overlap",
+        "modality": "content",
+        "contribution": -1.679,
+        "raw_value": 0.0,
+        "text": "few key terms of the topic"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A10",
+    "effectiveness": 45.9,
+    "true_effectiveness": 55.7,
+    "follow_up_p": 0.934,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.8460000157356262,
+      "prosody": 0.07199999690055847,
+      "hesitation": 0.004999999888241291,
+      "content": 0.07599999755620956,
+      "conversation": 0.0020000000949949026
+    },
+    "top_reasons": [
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -2.156,
+        "raw_value": 0.448,
+        "text": "looked away from the screen often (on screen 45%)"
+      },
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -1.898,
+        "raw_value": 7.69,
+        "text": "many disfluencies (7.7 per 100 words)"
+      },
+      {
+        "feature": "question_difficulty",
+        "modality": "content",
+        "contribution": -1.69,
+        "raw_value": 0.7,
+        "text": "question difficulty lowered the score"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0023_A11",
+    "effectiveness": 54.6,
+    "true_effectiveness": 49.4,
+    "follow_up_p": 0.213,
+    "reason": "none",
+    "modality_weights": {
+      "vision": 0.6869999766349792,
+      "prosody": 0.10499999672174454,
+      "hesitation": 0.006000000052154064,
+      "content": 0.19900000095367432,
+      "conversation": 0.003000000026077032
+    },
+    "top_reasons": [
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": 4.51,
+        "raw_value": 0.7428306937217712,
+        "text": "covered the expected points (74%)"
+      },
+      {
+        "feature": "disfluency_rate_per_100w",
+        "modality": "hesitation",
+        "contribution": -2.761,
+        "raw_value": 8.33,
+        "text": "many disfluencies (8.3 per 100 words)"
+      },
+      {
+        "feature": "ans_follow_up_p",
+        "modality": "content",
+        "contribution": 2.704,
+        "raw_value": 0.15434634685516357,
+        "text": "ans follow up p helped"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0036_A01",
+    "effectiveness": 67.4,
+    "true_effectiveness": 61.9,
+    "follow_up_p": 0.999,
+    "reason": "attention_drop",
+    "modality_weights": {
+      "vision": 0.9900000095367432,
+      "prosody": 0.0,
+      "hesitation": 0.0,
+      "content": 0.00800000037997961,
+      "conversation": 0.0020000000949949026
+    },
+    "top_reasons": [
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": 5.246,
+        "raw_value": 0.9472322463989258,
+        "text": "covered the expected points (95%)"
+      },
+      {
+        "feature": "reading_pattern_detected",
+        "modality": "vision",
+        "contribution": -3.701,
+        "raw_value": 1.0,
+        "text": "eye movements look like reading from another screen"
+      },
+      {
+        "feature": "ans_relevance",
+        "modality": "content",
+        "contribution": 3.451,
+        "raw_value": 0.8705216646194458,
+        "text": "answer stayed on the question (relevance 0.87)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0036_A02",
+    "effectiveness": 63.8,
+    "true_effectiveness": 67.9,
+    "follow_up_p": 0.953,
+    "reason": "vague",
+    "modality_weights": {
+      "vision": 0.45500001311302185,
+      "prosody": 0.0010000000474974513,
+      "hesitation": 0.0020000000949949026,
+      "content": 0.531000018119812,
+      "conversation": 0.009999999776482582
+    },
+    "top_reasons": [
+      {
+        "feature": "ans_completeness",
+        "modality": "content",
+        "contribution": 4.492,
+        "raw_value": 0.7300122976303101,
+        "text": "covered the expected points (73%)"
+      },
+      {
+        "feature": "ans_relevance",
+        "modality": "content",
+        "contribution": 2.633,
+        "raw_value": 0.6318063139915466,
+        "text": "answer stayed on the question (relevance 0.63)"
+      },
+      {
+        "feature": "engaged_window_fraction",
+        "modality": "vision",
+        "contribution": -2.567,
+        "raw_value": 0.0,
+        "text": "rarely looked engaged (0%)"
+      }
+    ]
+  },
+  {
+    "answer_id": "S0036_A03",
+    "effectiveness": 55.5,
+    "true_effectiveness": 46.1,
+    "follow_up_p": 0.047,
+    "reason": "none",
+    "modality_weights": {
+      "vision": 0.5400000214576721,
+      "prosody": 0.0010000000474974513,
+      "hesitation": 0.10499999672174454,
+      "content": 0.34700000286102295,
+      "conversation": 0.007000000216066837
+    },
+    "top_reasons": [
+      {
+        "feature": "answer_duration_s",
+        "modality": "content",
+        "contribution": 1.704,
+        "raw_value": 17.86,
+        "text": "answer length was appropriate (18 s)"
+      },
+      {
+        "feature": "response_latency_s",
+        "modality": "hesitation",
+        "contribution": -1.494,
+        "raw_value": 5.1,
+        "text": "long pause before answering (5.1 s)"
+      },
+      {
+        "feature": "mean_on_screen_ratio",
+        "modality": "vision",
+        "contribution": -1.212,
+        "raw_value": 0.481,
+        "text": "looked away from the screen often (on screen 48%)"
+      }
+    ]
+  }
+]

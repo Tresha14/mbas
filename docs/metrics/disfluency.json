@@ -1,0 +1,52 @@
+{
+  "model": "disfluency",
+  "generated": "2026-10-25T19:51:16",
+  "test_clips": 2527,
+  "per_class": {
+    "filler": {
+      "f1": 0.6804,
+      "threshold": 0.575,
+      "auc": 0.8667,
+      "positives": 625,
+      "prevalence": 0.2473,
+      "always_positive_f1": 0.3966
+    },
+    "repetition": {
+      "f1": 0.4033,
+      "threshold": 0.575,
+      "auc": 0.7019,
+      "positives": 512,
+      "prevalence": 0.2026,
+      "always_positive_f1": 0.337
+    },
+    "prolongation": {
+      "f1": 0.4618,
+      "threshold": 0.65,
+      "auc": 0.8521,
+      "positives": 239,
+      "prevalence": 0.0946,
+      "always_positive_f1": 0.1728
+    },
+    "block": {
+      "f1": 0.293,
+      "threshold": 0.575,
+      "auc": 0.6723,
+      "positives": 302,
+      "prevalence": 0.1195,
+      "always_positive_f1": 0.2135
+    }
+  },
+  "macro_f1": 0.4596,
+  "thresholds": {
+    "filler": 0.575,
+    "repetition": 0.575,
+    "prolongation": 0.65,
+    "block": 0.575
+  },
+  "cpu_latency_torch_4threads": {
+    "median_ms": 22.22,
+    "p90_ms": 22.979,
+    "fps": 45.0
+  },
+  "params": 1008357
+}

@@ -1,0 +1,99 @@
+{
+  "model": "fusion",
+  "generated": "2026-10-25T19:50:40",
+  "source": "synthetic",
+  "answers": {
+    "train": 2255,
+    "val": 451,
+    "test": 473
+  },
+  "answer_model_feature_coverage": 1.0,
+  "ablation": {
+    "video only": {
+      "effectiveness_mae": 10.712,
+      "effectiveness_r": 0.5467,
+      "subscore_mae": {
+        "clarity_score": 12.664,
+        "confidence_score": 5.266,
+        "engagement_score": 4.173,
+        "relevance_score": 19.655,
+        "fluency_score": 18.6
+      },
+      "follow_up_f1": 0.7474,
+      "reason_macro_f1": 0.2784,
+      "modality_weights": {
+        "vision": 1.0,
+        "prosody": 0.0,
+        "hesitation": 0.0,
+        "content": 0.0,
+        "conversation": 0.0
+      }
+    },
+    "audio only": {
+      "effectiveness_mae": 7.818,
+      "effectiveness_r": 0.7815,
+      "subscore_mae": {
+        "clarity_score": 8.375,
+        "confidence_score": 4.305,
+        "engagement_score": 17.914,
+        "relevance_score": 15.87,
+        "fluency_score": 5.865
+      },
+      "follow_up_f1": 0.7896,
+      "reason_macro_f1": 0.2113,
+      "modality_weights": {
+        "vision": 0.0,
+        "prosody": 0.35100001096725464,
+        "hesitation": 0.6489999890327454,
+        "content": 0.0,
+        "conversation": 0.0
+      }
+    },
+    "text only": {
+      "effectiveness_mae": 8.169,
+      "effectiveness_r": 0.7452,
+      "subscore_mae": {
+        "clarity_score": 7.871,
+        "confidence_score": 6.485,
+        "engagement_score": 18.599,
+        "relevance_score": 8.866,
+        "fluency_score": 19.876
+      },
+      "follow_up_f1": 0.8765,
+      "reason_macro_f1": 0.4434,
+      "modality_weights": {
+        "vision": 0.0,
+        "prosody": 0.0,
+        "hesitation": 0.0,
+        "content": 1.0,
+        "conversation": 0.0
+      }
+    },
+    "all modalities": {
+      "effectiveness_mae": 5.876,
+      "effectiveness_r": 0.8917,
+      "subscore_mae": {
+        "clarity_score": 6.615,
+        "confidence_score": 4.05,
+        "engagement_score": 6.334,
+        "relevance_score": 10.168,
+        "fluency_score": 6.334
+      },
+      "follow_up_f1": 0.9586,
+      "reason_macro_f1": 0.6367,
+      "modality_weights": {
+        "vision": 0.20469999313354492,
+        "prosody": 0.05979999899864197,
+        "hesitation": 0.10189999639987946,
+        "content": 0.5889999866485596,
+        "conversation": 0.044599998742341995
+      }
+    }
+  },
+  "baselines": {
+    "ridge_effectiveness_mae": 5.709,
+    "mean_effectiveness_mae": 12.486
+  },
+  "explanation_coverage_top3": 1.0,
+  "params": 85837
+}
