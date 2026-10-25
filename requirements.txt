@@ -27,3 +27,11 @@ imageio-ffmpeg>=0.5     # bundled ffmpeg binary, used to probe recorded webm fil
 # Tests
 pytest>=8.0
 httpx>=0.27
+
+# Product (Stage 9)
+sqlalchemy>=2.0
+livekit>=1.0          # LiveKit realtime SDK for the server-side analysis bot (media plumbing, no models)
+nbformat>=5.9
+nbclient>=0.10
+ipykernel>=6.29
+matplotlib>=3.8

@@ -47,11 +47,14 @@ services:
       MBAS_LAN_IP: ${MBAS_LAN_IP:-127.0.0.1}
       MBAS_API_PORT: ${MBAS_API_PORT:-8010}
       MBAS_WEB_PORT: ${MBAS_WEB_PORT:-3010}
+      MBAS_APP_API_PORT: ${MBAS_APP_API_PORT:-8020}
+      MBAS_APP_WEB_PORT: ${MBAS_APP_WEB_PORT:-3020}
     volumes:
       - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddydata:/data
     ports:
-      - "8443:8443"
+      - "8443:8443"     # recorder (Stage 1)
+      - "8444:8444"     # product (Stage 9)
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -72,6 +75,48 @@ services:
     volumes:
       - labelstudio:/label-studio/data
       - ./data/processed/labelstudio:/label-studio/files/mbas
+
+  # ---------------------------------------------------------------- full product (Stage 9-10), CPU containers.
+  # One command: docker compose --profile app up -d --build   (or .\tasks.ps1 start-all to run the Python parts
+  # natively on the GPU laptop). Models are mounted from ./checkpoints and ./ml/export/onnx.
+  backend:
+    profiles: ["app"]
+    build: { context: ., dockerfile: infra/backend.Dockerfile }
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8020
+    environment: &appenv
+      MBAS_DATABASE_URL: postgresql://${POSTGRES_USER:-mbas}:${POSTGRES_PASSWORD:-mbas}@postgres:5432/${POSTGRES_DB:-mbas}
+      REDIS_URL: redis://redis:6379/0
+      LIVEKIT_URL: ws://livekit:7880
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-mbasdevkey}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-mbas_dev_secret_change_me_0123456789abcdef}
+      MBAS_JWT_SECRET: ${MBAS_JWT_SECRET:-mbas-dev-jwt-secret-change-me-0123456789}
+      MBAS_PUBLIC_URL: ${MBAS_PUBLIC_URL:-https://localhost:8444}
+    volumes: &appvol
+      - ./checkpoints:/app/checkpoints:ro
+      - ./ml/export/onnx:/app/ml/export/onnx:ro
+      - ./data/processed/tokenizers:/app/data/processed/tokenizers:ro
+      - ./data/processed/lm:/app/data/processed/lm:ro
+      - ./data/raw/mbas_synthetic_dataset/reference:/app/data/raw/mbas_synthetic_dataset/reference:ro
+    ports:
+      - "${MBAS_APP_API_PORT:-8020}:8020"
+    depends_on: [postgres, redis]
+
+  workers:
+    profiles: ["app"]
+    build: { context: ., dockerfile: infra/backend.Dockerfile }
+    command: python -m backend.workers.run_all
+    environment: *appenv
+    volumes: *appvol
+    depends_on: [backend, livekit]
+
+  frontend:
+    profiles: ["app"]
+    build: { context: ./frontend, dockerfile: ../infra/frontend.Dockerfile }
+    environment:
+      MBAS_API: http://backend:8020
+    ports:
+      - "${MBAS_APP_WEB_PORT:-3020}:3020"
+    depends_on: [backend]
 
 volumes:
   pgdata:

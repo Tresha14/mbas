@@ -1,0 +1,126 @@
+{
+  "fusion_effectiveness": {
+    "gender": {
+      "groups": {
+        "female": {
+          "n": 176,
+          "mean_pred": 60.55,
+          "mean_label": 58.43,
+          "mae": 5.63
+        },
+        "male": {
+          "n": 297,
+          "mean_pred": 59.57,
+          "mean_label": 56.26,
+          "mae": 6.02
+        }
+      },
+      "max_gap": 0.39,
+      "flag": false
+    },
+    "accent": {
+      "groups": {
+        "gujarati_english": {
+          "n": 143,
+          "mean_pred": 57.98,
+          "mean_label": 54.51,
+          "mae": 6.08
+        },
+        "hindi_english": {
+          "n": 132,
+          "mean_pred": 59.76,
+          "mean_label": 57.57,
+          "mae": 5.91
+        },
+        "neutral_indian_english": {
+          "n": 88,
+          "mean_pred": 56.01,
+          "mean_label": 52.99,
+          "mae": 6.28
+        },
+        "tamil_english": {
+          "n": 110,
+          "mean_pred": 65.84,
+          "mean_label": 63.03,
+          "mae": 5.24
+        }
+      },
+      "max_gap": 1.04,
+      "flag": false
+    },
+    "glasses": {
+      "groups": {
+        "False": {
+          "n": 275,
+          "mean_pred": 60.63,
+          "mean_label": 58.06,
+          "mae": 5.68
+        },
+        "True": {
+          "n": 198,
+          "mean_pred": 58.98,
+          "mean_label": 55.69,
+          "mae": 6.15
+        }
+      },
+      "max_gap": 0.47,
+      "flag": false
+    }
+  },
+  "engagement_windows": {
+    "gender": {
+      "groups": {
+        "female": {
+          "n": 2560,
+          "engagement_accuracy_pct": 75.55
+        },
+        "male": {
+          "n": 4288,
+          "engagement_accuracy_pct": 76.75
+        }
+      },
+      "max_gap": 1.2,
+      "flag": false
+    },
+    "accent": {
+      "groups": {
+        "gujarati_english": {
+          "n": 2059,
+          "engagement_accuracy_pct": 73.87
+        },
+        "hindi_english": {
+          "n": 1895,
+          "engagement_accuracy_pct": 80.47
+        },
+        "neutral_indian_english": {
+          "n": 1327,
+          "engagement_accuracy_pct": 74.53
+        },
+        "tamil_english": {
+          "n": 1567,
+          "engagement_accuracy_pct": 75.94
+        }
+      },
+      "max_gap": 6.6,
+      "flag": true
+    },
+    "glasses": {
+      "groups": {
+        "False": {
+          "n": 4014,
+          "engagement_accuracy_pct": 77.8
+        },
+        "True": {
+          "n": 2834,
+          "engagement_accuracy_pct": 74.17
+        }
+      },
+      "max_gap": 3.63,
+      "flag": false
+    }
+  },
+  "gaze_per_person": {
+    "note": "gaze not evaluated"
+  },
+  "data": "synthetic test participants (person-wise split); rerun after our sessions are labelled"
+}
