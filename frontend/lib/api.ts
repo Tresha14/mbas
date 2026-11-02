@@ -45,7 +45,12 @@ export function claims(): { sub: string; role: Role; name?: string; interview_id
   const t = getToken();
   if (!t) return null;
   try {
-    return JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    const c = JSON.parse(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (c.exp && c.exp * 1000 < Date.now()) {
+      clearToken(); // expired login behaves as signed out, so pages send the user to /login
+      return null;
+    }
+    return c;
   } catch {
     return null;
   }
@@ -57,6 +62,11 @@ export async function req<T>(method: string, path: string, body?: unknown, token
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   if (!res.ok) {
+    // expired or revoked interviewer login: sign out and go to /login (candidate pages keep their own flow)
+    if (res.status === 401 && token && typeof window !== "undefined" && !/^\/(login|join|room|feedback)/.test(location.pathname)) {
+      clearToken();
+      location.href = "/login";
+    }
     let detail = res.statusText;
     try {
       detail = (await res.json()).detail ?? detail;
