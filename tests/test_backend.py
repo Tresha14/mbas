@@ -1,6 +1,9 @@
 """Stage 9-10 backend: auth + roles, interviewer-only analytics channel, events, worker answer analysis, reports."""
 from __future__ import annotations
 
+import json
+
+import jwt
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
@@ -49,6 +52,11 @@ def test_auth_roles_and_candidate_join(env):
     assert c.post(f"/api/interviews/{iv['id']}/events", json={"type": "ask", "question_id": "Q01"}, headers=ch).status_code == 403
     tok = c.post(f"/api/interviews/{iv['id']}/livekit-token", headers=ch).json()
     assert tok["identity"].startswith("candidate-")
+    # Google Meet capture: only the host gets a token, and it joins as the candidate so the bot analyses it
+    assert c.post(f"/api/interviews/{iv['id']}/capture-token", headers=ch).status_code == 403
+    cap = c.post(f"/api/interviews/{iv['id']}/capture-token", headers=h).json()
+    assert cap["identity"] == f"meet-capture-{iv['id']}"
+    assert json.loads(jwt.decode(cap["token"], options={"verify_signature": False})["metadata"])["role"] == "candidate"
     other = _host(c, "other@x.com")
     assert c.get(f"/api/interviews/{iv['id']}", headers=other).status_code == 403
     m = c.post("/api/interviews", json={"title": "standup"}, headers=_host(c, "host@x.com", "meeting_host")).json()

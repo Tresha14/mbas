@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, ArrowLeftRight, Check, ChevronRight, FileText, Play, Square } from "lucide-react";
+import { AlertCircle, ArrowLeftRight, Check, ChevronRight, FileText, Play, Square, Video } from "lucide-react";
 import type { Room } from "livekit-client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -11,7 +11,7 @@ import { Header, VideoSlot } from "@/components/shell";
 import { Badge, Button, Card, cn, Disclosure, Dot, Empty, mmss, scoreTone, SectionLabel, Segmented, Tabs, Textarea } from "@/components/ui";
 import { useAnalytics, type Line } from "@/lib/analytics";
 import { api, type Interview, type Question } from "@/lib/api";
-import { joinRoom, roleOf } from "@/lib/room";
+import { CAPTURE_PREFIX, captureMeetTab, joinRoom, roleOf, type MeetCapture } from "@/lib/room";
 
 function TranscriptLine({ l, active }: { l: Line; active: boolean }) {
   const words = l.words?.length ? l.words.map((w) => w.word) : l.text.split(" ");
@@ -43,6 +43,8 @@ export default function Cockpit() {
   const [jump, setJump] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const room = useRef<Room | null>(null);
+  const [capture, setCapture] = useState<MeetCapture | null>(null);
+  const [captureMsg, setCaptureMsg] = useState("");
   const { state, error } = useAnalytics(iv?.id ?? null);
 
   useEffect(() => {
@@ -53,7 +55,8 @@ export default function Cockpit() {
         if (roleOf(p) !== "candidate") return;
         if (kind === "camera") setCam(el);
         if (kind === "screen") setScreen(el);
-        if (kind === "audio" && el) document.body.appendChild(el);
+        // a captured Meet tab is already playing in its own tab: playing it here too would echo
+        if (kind === "audio" && el && !p.identity.startsWith(CAPTURE_PREFIX)) document.body.appendChild(el);
       },
     }).then((r) => (room.current = r)).catch(() => undefined);
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -91,8 +94,21 @@ export default function Cockpit() {
   }
   async function startStop() {
     if (!iv) return;
+    if (iv.status === "live") capture?.stop();
     setIv(iv.status === "live" ? await api.stop(iv.id) : await api.start(iv.id));
   }
+  async function toggleMeet() {
+    if (!iv) return;
+    if (capture) return capture.stop();
+    try {
+      const c = await captureMeetTab(iv.id, () => { setCapture(null); setCaptureMsg(""); });
+      setCapture(c);
+      setCaptureMsg(c.hasAudio ? "" : "No audio: share again and tick “Also share tab audio”.");
+    } catch (e) {
+      setCaptureMsg(e instanceof Error && e.name === "NotAllowedError" ? "" : `Couldn't capture the tab: ${e}`);
+    }
+  }
+  useEffect(() => () => capture?.stop(), [capture]);
 
   const main = swap ? screen : cam;
   const inset = swap ? cam : screen;
@@ -104,6 +120,11 @@ export default function Cockpit() {
         <div className="flex items-center gap-3">
           {iv?.status === "live" && <span className="flex items-center gap-2 text-[13px] tabular-nums text-muted"><Dot tone="bad" pulse /> {mmss(elapsed)}</span>}
           {state.models && !state.connected && <Badge tone="warn">reconnecting</Badge>}
+          {iv && iv.status !== "ended" && (
+            <Button size="sm" variant={capture ? "danger" : "outline"} onClick={toggleMeet}
+              title="Run the interview on Google Meet: pick the Meet tab and tick “Also share tab audio”">
+              <Video size={14} /> {capture ? "Stop Meet capture" : "Use Google Meet"}
+            </Button>)}
           {iv?.status === "ended"
             ? <Link href={`/report/${id}`}><Button size="sm"><FileText size={14} /> View report</Button></Link>
             : <Button size="sm" variant={iv?.status === "live" ? "danger" : "accent"} onClick={startStop}>
@@ -117,7 +138,7 @@ export default function Cockpit() {
               <h1 className="font-display text-2xl tracking-tight">{iv?.candidate_name ?? "Candidate"}</h1>
               <p className="text-[13px] text-muted">{iv?.title}</p>
             </div>
-            {error && <span className="text-[13px] text-bad">{error}</span>}
+            {(captureMsg || error) && <span className="text-[13px] text-bad">{captureMsg || error}</span>}
           </div>
 
           <div className="relative">

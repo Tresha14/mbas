@@ -34,6 +34,42 @@ export async function joinRoom(interviewId: number, h: RoomHandlers, publish = {
   return room;
 }
 
+export const CAPTURE_PREFIX = "meet-capture-";
+
+export interface MeetCapture {
+  hasAudio: boolean;
+  stop: () => void;
+}
+
+/** Capture a Google Meet (or any call) tab and publish it into our room as the candidate's camera + mic.
+ *  The tab's audio carries the other side of the call only (Meet never plays your own mic back), so the
+ *  workers hear the candidate; the hidden bot analyses it like any candidate joining our own room. */
+export async function captureMeetTab(interviewId: number, onEnded: () => void): Promise<MeetCapture> {
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: { frameRate: 15, width: { ideal: 1280 } },
+    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    // Chrome hints: offer tabs first, keep our own tab out of the list, and pre-tick "share tab audio"
+    preferCurrentTab: false, selfBrowserSurface: "exclude", systemAudio: "include",
+  } as DisplayMediaStreamOptions);
+  const { token, url } = await api.captureToken(interviewId);
+  const room = new Room();
+  await room.connect(livekitUrl(url), token);
+  const [video] = stream.getVideoTracks();
+  const [audio] = stream.getAudioTracks();
+  await room.localParticipant.publishTrack(video, { source: Track.Source.Camera, name: "meet-video" });
+  if (audio) await room.localParticipant.publishTrack(audio, { source: Track.Source.Microphone, name: "meet-audio" });
+  let stopped = false;
+  const stop = () => {
+    if (stopped) return;
+    stopped = true;
+    stream.getTracks().forEach((t) => t.stop());
+    room.disconnect();
+    onEnded();
+  };
+  video.addEventListener("ended", stop); // Chrome's own "Stop sharing" bar
+  return { hasAudio: !!audio, stop };
+}
+
 export function roleOf(p: RemoteParticipant): string {
   try {
     return JSON.parse(p.metadata ?? "{}").role ?? "participant";

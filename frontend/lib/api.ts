@@ -96,6 +96,7 @@ export const api = {
   event: (id: number, type: "ask" | "answer_end", q: { question_id: string; text?: string; category?: string }) =>
     req<{ question_ref: number; ask_s: number; end_s: number | null }>("POST", `/api/interviews/${id}/events`,
       { type, question_id: q.question_id, text: q.text ?? "", category: q.category ?? "" }),
+  captureToken: (id: number) => req<{ token: string; url: string; identity: string }>("POST", `/api/interviews/${id}/capture-token`),
   notes: (id: number, notes: string) => req("PUT", `/api/interviews/${id}/notes`, { notes }),
   data: (id: number) => req<InterviewData>("GET", `/api/interviews/${id}/data`),
   buildReport: (id: number) => req<ReportRow>("POST", `/api/interviews/${id}/report`),

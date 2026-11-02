@@ -185,6 +185,18 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
             return {"token": livekit_token(cfg.livekit_key, cfg.livekit_secret, iv.room, identity, c.get("name", identity),
                                            c["role"]), "url": cfg.livekit_url, "identity": identity}
 
+    @app.post("/api/interviews/{interview_id}/capture-token")
+    def capture_token(interview_id: int, c: dict = Depends(host)):
+        """Token for the interviewer's browser to publish a captured Google Meet tab as the candidate's camera + mic,
+        so the bot and workers analyse a call held on Meet exactly like one held in our own room."""
+        with db.session() as s:
+            iv = own(s, interview_id, c)
+            role = "candidate" if iv.mode == "interview" else "participant"
+            identity = f"meet-capture-{iv.id}"
+            return {"token": livekit_token(cfg.livekit_key, cfg.livekit_secret, iv.room, identity,
+                                           iv.candidate_name or "Google Meet", role),
+                    "url": cfg.livekit_url, "identity": identity}
+
     @app.post("/api/interviews/{interview_id}/start")
     def start(interview_id: int, c: dict = Depends(host)):
         with db.session() as s:
