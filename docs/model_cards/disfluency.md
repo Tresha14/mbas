@@ -1,6 +1,6 @@
 # Model card: Disfluency CRNN
 
-_Generated 2026-10-25 by the training/evaluation scripts. Trained from random initialisation; no pre-trained weights._
+_Generated 2026-11-18 by the training/evaluation scripts. Trained from random initialisation; no pre-trained weights._
 
 ## Task
 
@@ -22,10 +22,10 @@ SEP-28k (podcast clips, label present when >= 2 of 3 annotators marked it), spli
 
 | | |
 | --- | --- |
-| filler F1 / AUC | 0.6804 / 0.8667 (always-yes F1 0.3966) |
-| repetition F1 / AUC | 0.4033 / 0.7019 (always-yes F1 0.337) |
-| prolongation F1 / AUC | 0.4618 / 0.8521 (always-yes F1 0.1728) |
-| block F1 / AUC | 0.293 / 0.6723 (always-yes F1 0.2135) |
+| filler F1 / AUC | 0.6935 / 0.8784 (always-yes F1 0.3966) |
+| repetition F1 / AUC | 0.4253 / 0.7103 (always-yes F1 0.337) |
+| prolongation F1 / AUC | 0.4463 / 0.856 (always-yes F1 0.1728) |
+| block F1 / AUC | 0.3034 / 0.6791 (always-yes F1 0.2135) |
 
 ## Limitations
 
