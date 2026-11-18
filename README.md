@@ -15,13 +15,13 @@ initialisation on our own recorded dataset plus public raw datasets.
 | 2 | Dataset protocol, annotation, public datasets, splits | tools done; recording + labelling in progress (see `docs/dataset_card.md`) |
 | 3 | Data pipeline + features (`ml/common`) | done: `.\tasks.ps1 data` |
 | 4–5 | Vision: face + landmarks, head pose, gaze/iris, engagement, attention, ONNX export | trained on WIDER / MPIIGaze / synthetic; CNN-GRU waits for DAiSEE or our labels |
-| 6 | VAD + Conformer-CTC ASR + our 4-gram LM + streaming + mic demo | code done; trains on LibriSpeech (`.\tasks.ps1 train-all vad lm asr`) |
+| 6 | VAD + Conformer-CTC ASR + our 4-gram LM + streaming + mic demo | done: ASR 40 epochs on LibriSpeech, test-clean WER 0.137 with our LM |
 | 7 | Disfluency CRNN, pauses, prosody, speaking patterns, conversation, behaviour JSON | done (SEP-28k + synthetic) |
 | 8 | Answer-quality transformer vs TF-IDF, fusion + ablation + explanations, meeting head on AMI | done (synthetic + AMI) |
 | 9 | FastAPI + workers + LiveKit bot + Next.js cockpit / candidate room / meeting mode | done |
 | 10 | Reports + release flow, model report, bias check, user-study kit, one-command start, viva material | done; user study and demo video need people |
 
-Results for every model: `docs/model_report.md` (generated), per-model cards in `docs/model_cards/`, numbers in
+Project status and what is left: `docs/PROJECT_STATUS.md`. Results for every model: `docs/model_report.md` (generated), per-model cards in `docs/model_cards/`, numbers in
 `docs/metrics/*.json`. Anything trained on the synthetic dataset is labelled SYNTHETIC there.
 
 ## Repo layout
