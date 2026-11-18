@@ -39,15 +39,28 @@ export default function CandidateRoom() {
   const [now, setNow] = useState(Date.now());
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState("");
+  const [insecure, setInsecure] = useState(false);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [conn, setConn] = useState<"connected" | "reconnecting" | "disconnected">("connected");
+  const stopPreview = useRef<() => void>(() => undefined);
 
   useEffect(() => {
     let stream: MediaStream | null = null;
     let raf = 0;
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((s) => {
+    let ctx: AudioContext | null = null;
+    stopPreview.current = () => {
+      stream?.getTracks().forEach((t) => t.stop());
+      cancelAnimationFrame(raf);
+      ctx?.close().catch(() => undefined);
+      stream = null;
+      ctx = null;
+    };
+    const md = typeof navigator === "undefined" ? undefined : navigator.mediaDevices;   // undefined on plain http (not localhost)
+    (md?.getUserMedia ? md.getUserMedia({ video: true, audio: true }) : Promise.reject(new Error("insecure"))).then((s) => {
       stream = s;
       setOk({ cam: s.getVideoTracks().length > 0, mic: s.getAudioTracks().length > 0 });
       if (preview.current) { preview.current.srcObject = s; preview.current.play().catch(() => undefined); }
-      const ctx = new AudioContext();
+      ctx = new AudioContext();
       const an = ctx.createAnalyser();
       ctx.createMediaStreamSource(s).connect(an);
       const buf = new Uint8Array(an.fftSize);
@@ -57,12 +70,11 @@ export default function CandidateRoom() {
         raf = requestAnimationFrame(tick);
       };
       tick();
-    }).catch(() => setOk({ cam: false, mic: false }));
+    }).catch(() => { setInsecure(!md?.getUserMedia); setOk({ cam: false, mic: false }); });
     api.interview(id).then((iv) => setTitle(iv.title)).catch(() => router.replace("/"));
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => {
-      stream?.getTracks().forEach((t) => t.stop());
-      cancelAnimationFrame(raf);
+      stopPreview.current();
       clearInterval(timer);
       room.current?.disconnect();
     };
@@ -77,8 +89,12 @@ export default function CandidateRoom() {
           if (kind === "camera" && roleOf(p) === "interviewer") setRemote(el);
           if (kind === "audio" && el) document.body.appendChild(el);
         },
+        onWarning: setWarning,
+        onConnection: setConn,
+        onScreenShareStopped: () => setSharing(false),
       });
       room.current = r;
+      stopPreview.current();            // the call has its own camera/mic now; stop the preview loop
       setSelf(r.localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack?.attach() ?? null);
       setJoined(true);
       setT0(Date.now());
@@ -108,6 +124,7 @@ export default function CandidateRoom() {
               <p className="flex items-center gap-2.5"><Dot tone={ok.cam ? "good" : ok.cam === false ? "bad" : "neutral"} /> Camera {ok.cam === null ? "checking…" : ok.cam ? "ready" : "not found"}</p>
               <p className="flex items-center gap-2.5"><Dot tone={ok.mic ? "good" : ok.mic === false ? "bad" : "neutral"} /> Microphone {ok.mic === null ? "checking…" : ok.mic ? "ready" : "not found"}</p>
             </div>
+            {insecure && <p className="mt-5 rounded-2xl bg-warn/10 px-4 py-3 text-sm text-warn">This page is open over an insecure (http) address, so the browser blocks the camera and microphone. Open the secure https link from your interviewer, or use the same laptop (localhost).</p>}
             {error && <p className="mt-5 rounded-2xl bg-bad/10 px-4 py-3 text-sm text-bad">{error}. Please try again.</p>}
             <Button size="lg" className="mt-8 w-full" onClick={join} disabled={!ok.cam || !ok.mic || joining}>{joining ? "Connecting…" : "Join interview"}</Button>
             <p className="mt-4 text-[13px] text-faint">The call is recorded with your consent. You won&apos;t see scores during the call.</p>
@@ -123,6 +140,14 @@ export default function CandidateRoom() {
         <span className="text-sm text-white/70">{title}</span>
         <span className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-[13px] tabular-nums"><Dot tone="bad" pulse /> {mmss(t0 ? (now - t0) / 1000 : 0)}</span>
       </div>
+      {warning && <p className="mx-6 rounded-2xl bg-warn/15 px-4 py-2 text-[13px] text-warn">{warning}</p>}
+      {conn === "reconnecting" && <p className="mx-6 mt-2 rounded-2xl bg-warn/15 px-4 py-2 text-[13px] text-warn">Connection lost. Trying to reconnect…</p>}
+      {conn === "disconnected" && (
+        <p className="mx-6 mt-2 flex items-center justify-between gap-3 rounded-2xl bg-bad/15 px-4 py-2 text-[13px] text-bad">
+          You were disconnected from the call.
+          <Button size="sm" onClick={() => window.location.reload()}>Rejoin</Button>
+        </p>
+      )}
       <div className="relative flex-1 px-6 pb-28">
         <VideoSlot el={remote} label="Interviewer" className="h-full w-full" />
         <div className="absolute right-10 bottom-32 w-56 overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/10">

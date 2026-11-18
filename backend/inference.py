@@ -74,6 +74,15 @@ class Models:
         return m, text.load("asr"), dev
 
     @cached_property
+    def lm_decoder(self):
+        """Beam search + 4-gram LM for finished utterances; None (greedy only) when the ASR or the LM is missing."""
+        if self.asr is None:
+            return None
+        from ml.speech.asr.decode import live_decoder
+
+        return live_decoder(self.asr[1].pieces())
+
+    @cached_property
     def disfluency(self):
         s = _session("disfluency")
         if s is not None:

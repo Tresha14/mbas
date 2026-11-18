@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Header, PageTitle } from "@/components/shell";
 import { Badge, Button, Card, Dot, Empty, Input, Label, Segmented, Sheet } from "@/components/ui";
+import { copyText } from "@/lib/clipboard";
 import { api, claims, type Interview } from "@/lib/api";
 
 function when(iv: Interview): string {
@@ -38,6 +39,7 @@ export default function Dashboard() {
     api.interviews().then(setItems).catch((e) => setError(e.message));
   }, [router]);
 
+  const pageTitle = mode === "meeting" ? "Meetings" : "Interviews";
   const shown = useMemo(() => (items ?? []).filter((i) => filter === "all" || i.status === filter), [items, filter]);
 
   async function create(e: React.FormEvent) {
@@ -52,7 +54,7 @@ export default function Dashboard() {
   }
 
   async function copy(iv: Interview) {
-    await navigator.clipboard.writeText(iv.candidate_link.replace(/^https?:\/\/[^/]+/, location.origin));
+    if (!(await copyText(iv.candidate_link.replace(/^https?:\/\/[^/]+/, location.origin)))) return;
     setCopied(iv.id);
     setTimeout(() => setCopied(null), 1600);
   }
@@ -61,7 +63,7 @@ export default function Dashboard() {
     <>
       <Header />
       <main className="mx-auto max-w-6xl px-6 py-12">
-        <PageTitle eyebrow={name ? `Good to see you, ${name}` : undefined} title="Interviews"
+        <PageTitle eyebrow={name ? `Good to see you, ${name}` : undefined} title={pageTitle}
           subtitle="Schedule a session, send the link, and open the cockpit when you're ready."
           right={<Button onClick={() => setOpen(true)}><Plus size={16} /> New session</Button>} />
 

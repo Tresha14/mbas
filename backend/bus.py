@@ -45,8 +45,9 @@ class RedisBus:
                 out.append((name.decode(), mid.decode(), json.loads(f[b"json"]), f.get(b"bin")))
         return out
 
-    def history(self, stream: str, count: int = 2000) -> list[dict]:
-        return [json.loads(f[b"json"]) for _, f in self.r.xrange(stream, count=count)]
+    def history(self, stream: str, upto: str | None = None) -> list[dict]:
+        """Every message in the stream (it is capped by MAXLEN), up to and including id `upto`."""
+        return [json.loads(f[b"json"]) for _, f in self.r.xrange(stream, "-", upto or "+")]
 
     def last_id(self, stream: str) -> str:
         last = self.r.xrevrange(stream, count=1)
@@ -105,8 +106,9 @@ class MemoryBus:
                 got = collect()
             return got
 
-    def history(self, stream: str, count: int = 2000) -> list[dict]:
-        return [m for _, m, _ in self.streams.get(stream, [])[-count:]]
+    def history(self, stream: str, upto: str | None = None) -> list[dict]:
+        with self.cv:
+            return [m for mid, m, _ in self.streams.get(stream, []) if upto is None or not _after(mid, upto)]
 
     def last_id(self, stream: str) -> str:
         s = self.streams.get(stream)

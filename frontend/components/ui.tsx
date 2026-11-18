@@ -156,11 +156,12 @@ export function Sheet({ open, onClose, title, children }: { open: boolean; onClo
 }
 
 /** Expandable row (accordion item). */
-export function Disclosure({ summary, children, defaultOpen = false }: { summary: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) {
-  const [open, setOpen] = useState(defaultOpen);
+export function Disclosure({ summary, children, defaultOpen = false, forceOpen = false }: { summary: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean; forceOpen?: boolean }) {
+  const [openState, setOpen] = useState(defaultOpen);
+  const open = openState || forceOpen;
   return (
     <div className="border-b border-line last:border-0">
-      <button className="flex w-full items-center gap-4 py-5 text-left" onClick={() => setOpen(!open)}>
+      <button className="flex w-full items-center gap-4 py-5 text-left" onClick={() => setOpen(!openState)}>
         <div className="min-w-0 flex-1">{summary}</div>
         <ChevronDown size={18} className={cn("shrink-0 text-faint transition-transform", open && "rotate-180")} />
       </button>

@@ -124,6 +124,29 @@ class FollowUp(Base):
     text: Mapped[str] = mapped_column(Text, default="")
 
 
+class Flag(Base):
+    """A moment worth a look, kept for the report: long_pause | off_screen | no_face | reading."""
+    __tablename__ = "flags"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    interview_id: Mapped[int] = mapped_column(ForeignKey("interviews.id"), index=True)
+    t_s: Mapped[float] = mapped_column(Float)
+    kind: Mapped[str] = mapped_column(String(30))
+    text: Mapped[str] = mapped_column(Text, default="")
+
+
+class SpeechStat(Base):
+    """Candidate speaking stats every 5 s (over the last 30 s), for the report's delivery section."""
+    __tablename__ = "speech_stats"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    interview_id: Mapped[int] = mapped_column(ForeignKey("interviews.id"), index=True)
+    t_s: Mapped[float] = mapped_column(Float)
+    wpm: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pause_ratio: Mapped[float | None] = mapped_column(Float, nullable=True)
+    fillers_per_100w: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hedges_per_100w: Mapped[float | None] = mapped_column(Float, nullable=True)
+    pitch_variation_st: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
 class Report(Base):
     __tablename__ = "reports"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -178,4 +201,4 @@ def row_dict(obj) -> dict:
 
 
 __all__ = ["Database", "User", "Interview", "Participant", "Question", "TranscriptSegment", "WindowScore",
-           "AnswerScore", "FollowUp", "Report", "row_dict", "select", "json"]
+           "AnswerScore", "FollowUp", "Flag", "SpeechStat", "Report", "row_dict", "select", "json"]

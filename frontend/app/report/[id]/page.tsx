@@ -2,10 +2,13 @@
 
 import { Check, Copy, Download, Pause, Play, RefreshCw, Send } from "lucide-react";
 import { useParams } from "next/navigation";
+import { flushSync } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ConfidenceMatrix, EyeTrend, quadrantTone, ScoreRing, SubscoreRadar, TrendChart } from "@/components/charts";
+import { FlaggedMoments } from "@/components/live";
 import { Header } from "@/components/shell";
 import { Badge, Button, Card, cn, Disclosure, Empty, Input, mmss, scoreTone, SectionLabel, Tabs, Textarea } from "@/components/ui";
+import { copyText } from "@/lib/clipboard";
 import { api, type BehaviourSection, type CandidateView, type InterviewData, type MetricRow, type Moment, type ReportRow,
   type Scorecard, type Status } from "@/lib/api";
 
@@ -141,6 +144,7 @@ export default function Report() {
   const [copied, setCopied] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const [printAll, setPrintAll] = useState(false);
   useEffect(() => {   // the PDF button prints every tab as one report
@@ -153,16 +157,28 @@ export default function Report() {
 
   async function load(rebuild = false) {
     try {
-      const r = rebuild ? await api.buildReport(id) : await api.report(id).catch(() => api.buildReport(id));
+      const [existing, d] = await Promise.all([api.report(id).catch(() => null), api.data(id)]);
+      // a report built while the interview was still running is out of date once it has ended
+      const endedAt = d.interview.ended_at ? new Date(d.interview.ended_at).getTime() : null;
+      const stale = !!existing && endedAt != null && new Date(existing.updated_at).getTime() < endedAt;
+      const r = rebuild || !existing || stale ? await api.buildReport(id) : existing;
       setRep(r);
       setCv(r.candidate_view);
       if (r.release_token) setLink(`${location.origin}/feedback/${r.release_token}`);
-      setData(await api.data(id));
+      setData(d);
     } catch (e) {
       setError((e as Error).message);
     }
   }
   useEffect(() => { load(); }, [id]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // printing (button or Ctrl+P): show every section and open every question, not just the visible tab
+    const before = () => flushSync(() => setPrintAll(true));
+    const after = () => setPrintAll(false);
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => { window.removeEventListener("beforeprint", before); window.removeEventListener("afterprint", after); };
+  }, []);
 
   const duration = useMemo(() => Math.max(1, ...(data?.transcript.map((s) => s.end_s) ?? [0]), ...(rep?.interviewer_view.timeline.map((x) => x.t_s) ?? [0])), [data, rep]);
   useEffect(() => {
@@ -183,11 +199,17 @@ export default function Report() {
   async function saveAndRelease() {
     if (!cv) return;
     setSaving(true);
-    await api.editReport(id, cv);
-    const r = await api.release(id);
-    setLink(`${location.origin}/feedback/${r.release_token}`);
-    setRep({ ...rep!, released: true });
-    setSaving(false);
+    setActionError(null);
+    try {
+      await api.editReport(id, cv);
+      const r = await api.release(id);
+      setLink(`${location.origin}/feedback/${r.release_token}`);
+      setRep({ ...rep!, released: true });
+    } catch (e) {
+      setActionError(`Could not save and release: ${(e as Error).message}`);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -285,10 +307,31 @@ export default function Report() {
           </div>
         )}
 
+        {show("overview") && v.delivery && (
+          <Card className="mt-6">
+            <SectionLabel>Delivery</SectionLabel>
+            <div className="mt-1 grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-3">
+              {([
+                ["Pace", v.delivery.wpm, "wpm"], ["Pauses", v.delivery.pause_pct, "% of speech time"], ["Fillers", v.delivery.fillers_per_100w, "per 100 words"],
+                ["Hedges", v.delivery.hedges_per_100w, "per 100 words"], ["Camera-facing", v.delivery.camera_facing_pct, "% of the time"], ["Blinks", v.delivery.blinks_per_min, "per minute"],
+              ] as [string, number | null, string][]).map(([label, val, unit]) => (
+                <div key={label}>
+                  <p className="text-[13px] text-muted">{label}</p>
+                  <p className="font-display text-2xl tabular-nums">{val == null ? "–" : Math.round(val * 10) / 10}</p>
+                  <p className="text-xs text-faint">{unit}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-xs text-faint">Averages over the whole interview. Camera-facing is head pose and gaze toward the screen, not exact eye tracking.</p>
+            <SectionLabel className="mt-6">Flagged moments</SectionLabel>
+            <FlaggedMoments alerts={(v.flags ?? []).map((f) => ({ t_s: f.t_s, text: f.text, alert: f.kind }))} onPick={setT} />
+          </Card>
+        )}
+
         {show("questions") && (
           <Card className="mt-8 px-6 py-1">
             {v.cards.length === 0 ? <Empty title="No answers were scored" /> : v.cards.map((c) => (
-              <Disclosure key={c.question_ref} summary={
+              <Disclosure key={c.question_ref} forceOpen={printAll} summary={
                 <div className="flex items-center gap-5">
                   <span className={cn("w-10 font-display text-2xl tabular-nums", { good: "text-good", warn: "text-warn", bad: "text-bad", neutral: "text-faint" }[scoreTone(c.effectiveness)])}>
                     {c.effectiveness != null ? Math.round(c.effectiveness) : "–"}
@@ -360,12 +403,13 @@ export default function Report() {
             <div className="flex flex-wrap items-center gap-3">
               <Button size="lg" variant="accent" onClick={saveAndRelease} disabled={saving}><Send size={15} /> {rep.released ? "Save and update" : "Release to candidate"}</Button>
               {link && (
-                <Button size="lg" variant="outline" onClick={async () => { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1600); }}>
+                <Button size="lg" variant="outline" onClick={async () => { if (await copyText(link)) { setCopied(true); setTimeout(() => setCopied(false), 1600); } }}>
                   {copied ? <Check size={15} /> : <Copy size={15} />} Copy feedback link
                 </Button>
               )}
               {rep.released && <Badge tone="good">Released</Badge>}
             </div>
+            {actionError && <p className="rounded-2xl bg-bad/10 px-4 py-3 text-sm text-bad">{actionError}</p>}
           </div>
         )}
         <p className="mt-14 text-xs text-faint">{v.note}</p>

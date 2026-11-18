@@ -114,17 +114,22 @@ class ConformerCTC(nn.Module):
         self.ctc = nn.Linear(d, vocab)
         self.vocab = vocab
 
-    def features(self, wav, wav_len):
+    def features(self, wav, wav_len, stats=None):
+        """stats = (mean, var) of the log-mel, each (1, 80, 1): streaming passes running whole-utterance statistics so
+        a short sliding window is normalised like the full utterances the model was trained on."""
         f = self.front(wav)                                         # (B, 80, T)
         f_len = wav_len // 160 + 1
         mask = torch.arange(f.shape[-1], device=f.device)[None] < f_len[:, None]
-        mean = (f * mask[:, None]).sum(-1, keepdim=True) / f_len[:, None, None]
-        var = ((f - mean) ** 2 * mask[:, None]).sum(-1, keepdim=True) / f_len[:, None, None]
+        if stats is None:
+            mean = (f * mask[:, None]).sum(-1, keepdim=True) / f_len[:, None, None]
+            var = ((f - mean) ** 2 * mask[:, None]).sum(-1, keepdim=True) / f_len[:, None, None]
+        else:
+            mean, var = (s.to(f.device, f.dtype) for s in stats)
         f = (f - mean) / torch.sqrt(var + 1e-5) * mask[:, None]
         return self.specaug(f), f_len
 
-    def encode(self, wav, wav_len, chunk: int | None = None, left_chunks: int = 4):
-        f, f_len = self.features(wav, wav_len)
+    def encode(self, wav, wav_len, chunk: int | None = None, left_chunks: int = 4, stats=None):
+        f, f_len = self.features(wav, wav_len, stats)
         x, lens = self.sub(f, f_len)
         x = self.drop(self.pos(x))
         T = x.shape[1]
@@ -134,7 +139,7 @@ class ConformerCTC(nn.Module):
             x = b(x, pad, att)
         return x, lens
 
-    def forward(self, wav, wav_len, chunk: int | None = None, left_chunks: int = 4):
+    def forward(self, wav, wav_len, chunk: int | None = None, left_chunks: int = 4, stats=None):
         """-> log-probs (B, T', vocab) at 40 ms, output lengths (B,)."""
-        x, lens = self.encode(wav, wav_len, chunk, left_chunks)
+        x, lens = self.encode(wav, wav_len, chunk, left_chunks, stats)
         return F.log_softmax(self.ctc(x).float(), -1), lens

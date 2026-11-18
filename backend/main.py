@@ -19,7 +19,8 @@ from pydantic import BaseModel, Field
 from backend.auth import HOST_ROLES, hash_password, make_jwt, read_jwt, verify_password
 from backend.bus import make_bus
 from backend.config import Settings, settings
-from backend.db import (AnswerScore, Database, FollowUp, Interview, Participant, Question, Report, TranscriptSegment,
+from backend.db import (AnswerScore, Database, Flag, FollowUp, Interview, Participant, Question, Report, SpeechStat,
+                        TranscriptSegment,
                         User, WindowScore, row_dict, select)
 from recorder.backend.livekit_token import make_token as livekit_token
 
@@ -61,6 +62,23 @@ class NotesIn(BaseModel):
 
 class ReportEditIn(BaseModel):
     candidate_view: dict[str, Any]
+
+
+def catch_up(history: list[dict], keep_gaze: int = 60) -> list[dict]:
+    """What a (re)connecting cockpit needs: everything except in-progress transcript lines and old gaze points
+    (5 per second, only the recent trail is drawn)."""
+    gaze_seen = 0
+    out = []
+    for m in reversed(history):
+        k = m.get("kind")
+        if k == "gaze":
+            gaze_seen += 1
+            if gaze_seen > keep_gaze:
+                continue
+        elif k == "transcript" and not m.get("final"):
+            continue
+        out.append(m)
+    return out[::-1]
 
 
 def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None) -> FastAPI:
@@ -205,6 +223,10 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
     def start(interview_id: int, c: dict = Depends(host)):
         with db.session() as s:
             iv = own(s, interview_id, c)
+            if iv.status == "live":                 # a second Start must not move the clock the workers already use
+                return _iv(iv, cfg)
+            if iv.status == "ended":
+                raise HTTPException(409, "this interview has already ended")
             iv.status, iv.started_at = "live", dt.datetime.now(dt.timezone.utc)
             s.commit()
             bus.publish("control", {"type": "start", "interview_id": iv.id, "room": iv.room, "mode": iv.mode,
@@ -215,6 +237,8 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
     def stop(interview_id: int, c: dict = Depends(host)):
         with db.session() as s:
             iv = own(s, interview_id, c)
+            if iv.status == "ended":
+                return _iv(iv, cfg)
             iv.status, iv.ended_at = "ended", dt.datetime.now(dt.timezone.utc)
             s.commit()
             bus.publish("control", {"type": "stop", "interview_id": iv.id, "t_s": t_rel(iv)})
@@ -261,7 +285,7 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
             q = lambda model: [row_dict(r) for r in s.scalars(select(model).where(model.interview_id == iv.id))]  # noqa: E731
             return {"interview": _iv(iv, cfg), "questions": q(Question), "transcript": q(TranscriptSegment),
                     "windows": q(WindowScore), "answers": q(AnswerScore), "follow_ups": q(FollowUp),
-                    "participants": q(Participant)}
+                    "participants": q(Participant), "flags": q(Flag), "speech": q(SpeechStat)}
 
     # ------------------------------------------------------------------ reports (Stage 10)
     @app.post("/api/interviews/{interview_id}/report")
@@ -341,7 +365,7 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
         stream = f"analytics:{interview_id}"
         try:
             last = bus.last_id(stream)
-            for m in bus.history(stream):            # catch up on everything so far
+            for m in catch_up(bus.history(stream, upto=last)):   # rebuild the cockpit state; live messages continue after `last`
                 await ws.send_json(m)
             while True:
                 items = await asyncio.to_thread(bus.read, {stream: last}, 1000, 200)

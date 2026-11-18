@@ -67,13 +67,23 @@ export interface FollowUpMsg {
   probability: number;
   source: string;
 }
+export interface Speaking {
+  t_s: number;
+  wpm: number | null;
+  pause_ratio: number | null;
+  pitch_variation_st: number | null;
+  speech_ratio: number;
+  fillers_per_100w?: number | null;
+  hedges_per_100w?: number | null;
+}
 export interface State {
   connected: boolean;
   lines: Line[];
   partial: Record<string, Line | undefined>;
   windows: WindowMsg[];
   gaze: GazeMsg[];
-  speaking: { wpm: number | null; pause_ratio: number | null; pitch_variation_st: number | null; speech_ratio: number } | null;
+  speaking: Speaking | null;
+  speakingHist: Speaking[];
   conversation: {
     turn_count: number;
     overlap_s: number;
@@ -90,13 +100,14 @@ export interface State {
 }
 
 const initial: State = {
-  connected: false, lines: [], partial: {}, windows: [], gaze: [], speaking: null, conversation: null, answers: [],
+  connected: false, lines: [], partial: {}, windows: [], gaze: [], speaking: null, speakingHist: [], conversation: null, answers: [],
   followUps: [], alerts: [], questions: [], models: null, latencyMs: null,
 };
 
 type Msg = Record<string, unknown> & { kind?: string };
 
-function reduce(s: State, a: { type: "msg"; m: Msg } | { type: "conn"; v: boolean }): State {
+function reduce(s: State, a: { type: "msg"; m: Msg } | { type: "conn"; v: boolean } | { type: "reset" }): State {
+  if (a.type === "reset") return { ...initial, connected: true };
   if (a.type === "conn") return { ...s, connected: a.v };
   const m = a.m;
   const latency = typeof m.server_sent_at === "number" ? Math.max(0, Date.now() - (m.server_sent_at as number) * 1000) : s.latencyMs;
@@ -111,7 +122,7 @@ function reduce(s: State, a: { type: "msg"; m: Msg } | { type: "conn"; v: boolea
     case "gaze":
       return { ...s, gaze: [...s.gaze, m as unknown as GazeMsg].slice(-60), latencyMs: latency };
     case "speaking":
-      return { ...s, speaking: m as unknown as State["speaking"] };
+      return { ...s, speaking: m as unknown as Speaking, speakingHist: [...s.speakingHist, m as unknown as Speaking].slice(-360) };
     case "conversation":
       return { ...s, conversation: m as unknown as State["conversation"] };
     case "answer":
@@ -119,11 +130,11 @@ function reduce(s: State, a: { type: "msg"; m: Msg } | { type: "conn"; v: boolea
     case "follow_up":
       return { ...s, followUps: [...s.followUps, m as unknown as FollowUpMsg] };
     case "alert":
-      return { ...s, alerts: [...s.alerts, m as unknown as State["alerts"][0]].slice(-30) };
+      return { ...s, alerts: [...s.alerts, m as unknown as State["alerts"][0]].slice(-200) };
     case "question":
       return { ...s, questions: [...s.questions.filter((q) => !(q.question_ref === m.question_ref && m.type === "answer_end" && q.type === "ask")), m as unknown as State["questions"][0]] };
     case "status":
-      return { ...s, models: m.models as Record<string, boolean> };
+      return { ...s, models: { ...s.models, ...(m.models as Record<string, boolean>) } };
     default:
       return s;
   }
@@ -140,7 +151,7 @@ export function useAnalytics(interviewId: number | null) {
     const connect = () => {
       const sock = new WebSocket(wsUrl(`/ws/analytics/${interviewId}?token=${getToken() ?? ""}`));
       ws.current = sock;
-      sock.onopen = () => dispatch({ type: "conn", v: true });
+      sock.onopen = () => dispatch({ type: "reset" });   // the server replays history on connect: start clean so nothing shows twice
       sock.onmessage = (e) => dispatch({ type: "msg", m: JSON.parse(e.data) });
       sock.onclose = (e) => {
         dispatch({ type: "conn", v: false });

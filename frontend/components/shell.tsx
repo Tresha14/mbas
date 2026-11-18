@@ -32,6 +32,7 @@ export function Header({ right, nav = true, wide = false }: { right?: React.Reac
         {nav && host && (
           <nav className="hidden items-center gap-1 text-[13px] sm:flex">
             <Link href="/dashboard" className="rounded-full px-3 py-1.5 text-muted transition hover:bg-surface-2 hover:text-fg">Interviews</Link>
+            <Link href="/models" className="rounded-full px-3 py-1.5 text-muted transition hover:bg-surface-2 hover:text-fg">Models</Link>
           </nav>
         )}
         <div className="flex-1" />

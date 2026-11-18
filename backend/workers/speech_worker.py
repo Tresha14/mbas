@@ -20,17 +20,37 @@ import numpy as np
 
 from backend.bus import make_bus
 from backend.config import settings
-from backend.db import AnswerScore, Database, FollowUp, TranscriptSegment, WindowScore, clean_json, row_dict, select
+from backend.db import (AnswerScore, Database, FollowUp, SpeechStat, TranscriptSegment, WindowScore, clean_json, row_dict,
+                        select)
+from backend.flags import raise_flag
 from backend.features import assemble
 from backend.inference import Models, Timer
 from ml.behaviour.answer_behaviour import answer_behaviour
 from ml.behaviour.conversation import analyse
 from ml.behaviour.pauses import question_end, segments
-from ml.behaviour.text_hesitation import FILLERS, words as split_words
+from ml.behaviour.text_hesitation import FILLERS, HEDGES, count_phrases, filler_count, words as split_words
 
 SR = 16000
 FRAME = 160
 SILENCE_DB = -52.0           # absolute floor under the VAD (dBFS per 10 ms frame)
+
+
+class ChunkVAD:
+    """Speech probabilities for consecutive 640 ms chunks, with 0.5 s of context between calls. Falls back to an
+    energy gate until the VAD is trained. StreamingASR needs this to know when an utterance has ended."""
+
+    def __init__(self, fn):
+        self.fn, self.ctx = fn, np.zeros(8000, np.float32)
+
+    def __call__(self, chunk: np.ndarray) -> np.ndarray:
+        n = len(chunk) // FRAME
+        if self.fn is None:
+            fr = chunk[: n * FRAME].reshape(-1, FRAME)
+            return (10 * np.log10((fr ** 2).mean(1) + 1e-10) > -45).astype(np.float32)
+        x = np.concatenate([self.ctx, chunk])
+        p = self.fn(x)
+        self.ctx = x[-len(self.ctx):]
+        return p[-n - 1:-1] if n and len(p) > n else p[:n]
 
 
 @dataclass
@@ -70,6 +90,7 @@ class InterviewSpeech:
         self.id, self.mode, self.bus, self.db, self.m = interview_id, mode, bus, db, models
         self.tracks: dict[str, Track] = {}
         self.next_speaking, self.next_conv = 5.0, 10.0
+        self.in_pause = False
         self.questions: dict[int, dict] = {}
         bus.publish(f"analytics:{self.id}", {"kind": "status", "models": {
             "vad": models.vad is not None, "asr": models.asr is not None, "disfluency": models.disfluency is not None,
@@ -82,7 +103,7 @@ class InterviewSpeech:
                 from ml.speech.asr.streaming import StreamingASR
 
                 model, tok, dev = self.m.asr
-                t.asr = StreamingASR(model, tok, None, device=dev)
+                t.asr = StreamingASR(model, tok, ChunkVAD(self.m.vad), device=dev, decoder=self.m.lm_decoder)
             self.tracks[name] = t
         return self.tracks[name]
 
@@ -123,12 +144,24 @@ class InterviewSpeech:
             for r in results:
                 self.transcript(name, r, msg)
         now_t = t0 + len(x) / SR
+        if name == "candidate":
+            self.pause_check(now_t)
         if name == "candidate" and now_t >= self.next_speaking:
             self.speaking(tr, now_t)
             self.next_speaking += 5.0
         if now_t >= self.next_conv:
             self.conversation(now_t)
             self.next_conv += 10.0
+
+    def pause_check(self, t: float):
+        """Alert once per episode when the candidate has been silent for 4 s (and the interviewer is not talking)."""
+        cand, inter = self.tracks["candidate"], self.tracks.get("interviewer")
+        n = 400
+        silent = len(cand.speech) >= n and cand.speech.any() and not cand.speech[-n:].any() \
+            and not (inter is not None and inter.speech[-n:].any())
+        if silent and not self.in_pause:
+            raise_flag(self.bus, self.db, self.id, "long_pause", t, "Long pause: candidate silent for 4 s")
+        self.in_pause = silent
 
     def transcript(self, name: str, r, msg: dict):
         if not r.text and not r.final:
@@ -163,11 +196,27 @@ class InterviewSpeech:
             v = f0[~np.isnan(f0)]
             if len(v) > 10:
                 pitch_var = float(np.std(12 * np.log2(v / np.median(v))))
-        self.bus.publish(f"analytics:{self.id}", {
-            "kind": "speaking", "t_s": t, "wpm": round(60 * words / speech_s, 1) if speech_s > 3 else None,
+        text = " ".join(f["text"] for f in tr.finals if f["end_s"] > t - win)
+        ws = split_words(text)
+        per100 = (lambda n: round(100 * n / len(ws), 1)) if len(ws) >= 15 else (lambda n: None)
+        msg = {
+            "kind": "speaking", "t_s": t, "wpm": round(60 * words / speech_s, 1) if speech_s > 3 and words > 0 else None,   # no words = no transcript yet (ASR missing), not "0 wpm"
+            "fillers_per_100w": per100(filler_count(ws, text)),
+            "hedges_per_100w": per100(count_phrases(text, HEDGES)),
             "pause_ratio": round(1 - speech_s / min(win, t), 3) if t > 0 else None,
             "pitch_variation_st": round(pitch_var, 2) if pitch_var is not None else None,
-            "speech_ratio": round(float(sp.mean()), 3) if len(sp) else 0.0})
+            "speech_ratio": round(float(sp.mean()), 3) if len(sp) else 0.0}
+        self.bus.publish(f"analytics:{self.id}", msg)
+        try:
+            with self.db.session() as s:
+                s.add(SpeechStat(interview_id=self.id, t_s=round(t, 2), wpm=msg["wpm"], pause_ratio=msg["pause_ratio"],
+                                 fillers_per_100w=msg["fillers_per_100w"], hedges_per_100w=msg["hedges_per_100w"],
+                                 pitch_variation_st=msg["pitch_variation_st"]))
+                s.commit()
+        except Exception:  # noqa: BLE001 - storage problems must not stop the live analysis
+            import traceback
+
+            traceback.print_exc()
 
     def conversation(self, t: float):
         segs = {k: v.segs() for k, v in self.tracks.items()}

@@ -49,7 +49,7 @@ switch ($Target) {
     "web-install" { Push-Location frontend; npm install; Pop-Location }
     "web" { Push-Location frontend; npm run dev; Pop-Location }
     "start-all" {
-        docker compose up -d postgres redis livekit caddy
+        docker compose up -d --wait postgres redis livekit caddy   # --wait: returns when postgres/redis are healthy
         Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$PSScriptRoot'; .\tasks.ps1 api"
         Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$PSScriptRoot'; .\tasks.ps1 workers"
         Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$PSScriptRoot'; .\tasks.ps1 web"

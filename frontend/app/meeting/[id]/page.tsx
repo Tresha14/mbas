@@ -2,6 +2,7 @@
 
 import type { RemoteParticipant, Room } from "livekit-client";
 import { Play, Square } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Meter } from "@/components/charts";
@@ -17,11 +18,17 @@ export default function Meeting() {
   const [videos, setVideos] = useState<Record<string, { el: HTMLMediaElement; name: string }>>({});
   const [people, setPeople] = useState<RemoteParticipant[]>([]);
   const room = useRef<Room | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [callWarning, setCallWarning] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [me, setMe] = useState<{ identity: string; name: string } | null>(null);
   const { state } = useAnalytics(iv?.id ?? null);
 
   useEffect(() => {
-    api.interview(id).then(setIv);
+    let cancelled = false;
+    api.interview(id).then(setIv).catch((e) => setLoadError((e as Error).message));
     joinRoom(id, {
+      onWarning: setCallWarning,
       onTrack: (kind, el, p) => {
         if (kind === "camera") setVideos((v) => {
           const n = { ...v };
@@ -32,18 +39,30 @@ export default function Meeting() {
         if (kind === "audio" && el) document.body.appendChild(el);
       },
       onParticipants: setPeople,
-    }).then((r) => (room.current = r)).catch(() => undefined);
-    return () => { room.current?.disconnect(); };
+    }).then((r) => { if (cancelled) r.disconnect(); else { room.current = r; setMe({ identity: r.localParticipant.identity, name: `${r.localParticipant.name || "Host"} (you)` }); } })
+      .catch((e) => setCallWarning(`Could not connect to the video call (${(e as Error).message}). Live analysis data may still appear.`));
+    return () => { cancelled = true; room.current?.disconnect(); };
   }, [id]);
+
+  if (loadError) {
+    return (
+      <>
+        <Header wide />
+        <main className="mx-auto max-w-xl px-6 py-16">
+          <Card><Empty title="Couldn't open this meeting" text={loadError} action={<Link href="/dashboard"><Button>Back to meetings</Button></Link>} /></Card>
+        </main>
+      </>
+    );
+  }
 
   const conv = state.conversation;
   const meet = conv?.meeting ?? {};
-  const names = Object.fromEntries(people.map((p) => [p.identity, p.name || p.identity]));
+  const names = Object.fromEntries([...(me ? [[me.identity, me.name]] : []), ...people.map((p) => [p.identity, p.name || p.identity])]);
   return (
     <>
       <Header wide right={
         <Button size="sm" variant={iv?.status === "live" ? "danger" : "accent"} disabled={iv?.status === "ended"}
-          onClick={async () => iv && setIv(iv.status === "live" ? await api.stop(iv.id) : await api.start(iv.id))}>
+          onClick={async () => { if (!iv) return; setActionError(null); try { setIv(iv.status === "live" ? await api.stop(iv.id) : await api.start(iv.id)); } catch (e) { setActionError((e as Error).message); } }}>
           {iv?.status === "live" ? <><Square size={13} /> End meeting</> : <><Play size={13} /> Start analysis</>}
         </Button>} />
       <main className="mx-auto grid max-w-[1440px] gap-6 px-6 py-6 xl:grid-cols-[1fr_360px]">
@@ -52,6 +71,8 @@ export default function Meeting() {
             <h1 className="font-display text-2xl tracking-tight">{iv?.title}</h1>
             <Badge><Dot tone={iv?.status === "live" ? "good" : "neutral"} pulse={iv?.status === "live"} /> {people.length + 1} in the call</Badge>
           </div>
+          {actionError && <p className="mb-4 rounded-2xl bg-bad/10 px-4 py-3 text-[13px] text-bad">{actionError}</p>}
+          {callWarning && <p className="mb-4 rounded-2xl bg-warn/10 px-4 py-3 text-[13px] text-warn">{callWarning}</p>}
           {Object.keys(videos).length === 0 ? (
             <Card><Empty title="Waiting for participants" text="Share the participant link from your dashboard. Their video appears here." /></Card>
           ) : (
@@ -82,7 +103,11 @@ export default function Meeting() {
           {state.followUps.length > 0 && (
             <Card>
               <SectionLabel className="mb-3">Follow-up items</SectionLabel>
-              <ul className="space-y-2 text-sm">{state.followUps.map((f, i) => <li key={i} className="text-muted">{f.text}</li>)}</ul>
+              <ul className="space-y-2">
+                {state.followUps.map((f, i) => (
+                  <li key={i} className="rounded-2xl bg-warn/10 px-4 py-2.5 text-[13px] text-warn">{f.text}</li>
+                ))}
+              </ul>
             </Card>
           )}
         </aside>

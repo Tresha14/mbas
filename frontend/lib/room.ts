@@ -8,6 +8,9 @@ export type Kind = "camera" | "screen" | "audio";
 export interface RoomHandlers {
   onTrack: (kind: Kind, el: HTMLMediaElement | null, participant: RemoteParticipant) => void;
   onParticipants?: (ps: RemoteParticipant[]) => void;
+  onWarning?: (message: string) => void;
+  onConnection?: (state: "connected" | "reconnecting" | "disconnected") => void;
+  onScreenShareStopped?: () => void;
 }
 
 function kindOf(track: RemoteTrack): Kind {
@@ -25,11 +28,21 @@ export async function joinRoom(interviewId: number, h: RoomHandlers, publish = {
       track.detach().forEach((e) => e.remove());
       h.onTrack(kindOf(track), null, p);
     })
+    .on(RoomEvent.Reconnecting, () => h.onConnection?.("reconnecting"))
+    .on(RoomEvent.Reconnected, () => h.onConnection?.("connected"))
+    .on(RoomEvent.Disconnected, () => h.onConnection?.("disconnected"))
+    .on(RoomEvent.LocalTrackUnpublished, (pub) => { if (pub.source === Track.Source.ScreenShare) h.onScreenShareStopped?.(); })
     .on(RoomEvent.ParticipantConnected, refresh)
     .on(RoomEvent.ParticipantDisconnected, refresh);
   await room.connect(livekitUrl(url), token);
-  if (publish.camera) await room.localParticipant.setCameraEnabled(true, { resolution: { width: 1280, height: 720, frameRate: 15 } });
-  if (publish.mic) await room.localParticipant.setMicrophoneEnabled(true, { echoCancellation: true, noiseSuppression: false });
+  if (publish.camera) {
+    try { await room.localParticipant.setCameraEnabled(true, { resolution: { width: 1280, height: 720, frameRate: 15 } }); }
+    catch { h.onWarning?.("Your camera could not be started (permission denied or in use). You are in the call without video."); }
+  }
+  if (publish.mic) {
+    try { await room.localParticipant.setMicrophoneEnabled(true, { echoCancellation: true, noiseSuppression: false }); }
+    catch { h.onWarning?.("Your microphone could not be started (permission denied or in use). You are in the call without audio."); }
+  }
   refresh();
   return room;
 }

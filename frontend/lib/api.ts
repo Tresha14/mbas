@@ -27,9 +27,15 @@ export interface Question {
 
 const KEY = "mbas_token";
 
+/** Candidate pages: the per-tab candidate token wins. Everywhere else (interviewer pages): the stored interviewer login
+    wins, so signing in as an interviewer in a tab that was used as a candidate works. */
+function onCandidatePage(): boolean {
+  return /^\/(room|join)(\/|$)/.test(window.location.pathname);
+}
+
 export function getToken(): string | null {
-  // the per-tab candidate token (sessionStorage) wins over a stored interviewer login in the same browser
-  return typeof window === "undefined" ? null : sessionStorage.getItem(KEY) ?? localStorage.getItem(KEY);
+  if (typeof window === "undefined") return null;
+  return onCandidatePage() ? sessionStorage.getItem(KEY) ?? localStorage.getItem(KEY) : localStorage.getItem(KEY);
 }
 
 export function setToken(token: string, session = false) {
@@ -61,6 +67,11 @@ export async function req<T>(method: string, path: string, body?: unknown, token
   if (body !== undefined) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  if (res.status === 401 && !path.startsWith("/api/auth/") && !onCandidatePage()) {
+    clearToken();                                   // login expired: go back to sign-in instead of showing empty pages
+    window.location.assign("/login");
+    return new Promise<T>(() => undefined);
+  }
   if (!res.ok) {
     // expired or revoked interviewer login: sign out and go to /login (candidate pages keep their own flow)
     if (res.status === 401 && token && typeof window !== "undefined" && !/^\/(login|join|room|feedback)/.test(location.pathname)) {
@@ -220,7 +231,12 @@ export interface ReportRow {
     summary: { questions: number; mean_effectiveness: number | null; mean_attention: number | null; engaged_share: number | null; follow_ups: number };
     radar: Record<string, number | null>;
     cards: Card[];
-    timeline: { t_s: number; attention: number | null; engagement: string | null }[];
+    timeline: { t_s: number; attention: number | null; engagement: string | null; facing?: number | null; blink?: number | null }[];
+    delivery?: {
+      wpm: number | null; pause_pct: number | null; fillers_per_100w: number | null; hedges_per_100w: number | null;
+      camera_facing_pct: number | null; blinks_per_min: number | null; flag_counts: Record<string, number>;
+    };
+    flags?: { t_s: number; time: string; kind: string; text: string }[];
     follow_ups: { t_s: number; time: string; reason: string; text: string; source: string }[];
     note: string;
     scorecard?: Scorecard;
@@ -232,12 +248,14 @@ export interface ReportRow {
   candidate_view: CandidateView;
   released: boolean;
   release_token: string | null;
+  updated_at: string;
 }
 
 export function wsUrl(path: string): string {
   const env = process.env.NEXT_PUBLIC_WS_URL;
   if (env) return `${env}${path}`;
-  if (location.port === "3020") return `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:8020${path}`;
+  // Next dev (3000) and next start (3020) do not proxy WebSockets: go straight to the API
+  if (location.port === "3020" || location.port === "3000") return `${location.protocol === "https:" ? "wss" : "ws"}://${location.hostname}:8020${path}`;
   return `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${path}`;
 }
 

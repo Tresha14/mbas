@@ -6,6 +6,7 @@ score(prefix) = log P_ctc(prefix) + alpha * log P_lm(words) + beta * n_words
 from __future__ import annotations
 
 import math
+import time
 from collections import defaultdict
 
 import numpy as np
@@ -54,11 +55,15 @@ class BeamDecoder:
             return 0.0
         return self.alpha * self.lm.score(new_word, ("<s>",) * 3 + words) + self.beta
 
-    def decode(self, logp: np.ndarray) -> list[int]:
-        """logp (T, V) natural log-probs -> best token sequence."""
+    def decode(self, logp: np.ndarray, max_s: float | None = None) -> list[int]:
+        """logp (T, V) natural log-probs -> best token sequence. Raises TimeoutError after max_s seconds (live use:
+        the caller keeps the greedy result rather than stalling the audio loop)."""
+        t_start = time.perf_counter()
         # beam entries: prefix tuple -> [p_blank, p_nonblank, lm_score, words tuple, partial word]
         beams = {(): [0.0, NEG, 0.0, (), ""]}
         for t in range(len(logp)):
+            if max_s is not None and time.perf_counter() - t_start > max_s:
+                raise TimeoutError("beam search over time budget")
             row = logp[t]
             cand = np.where(row > self.prune)[0]
             if len(cand) == 0:
@@ -109,3 +114,66 @@ def wer(ref: str, hyp: str) -> tuple[int, int]:
             d[j] = min(d[j] + 1, d[j - 1] + 1, prev + (r[i - 1] != h[j - 1]))
             prev = cur
     return d[len(h)], len(r)
+
+
+def live_decoder(pieces: list[str], beam: int = 8):  # prune -6: tighter than offline eval (-8) to keep it fast
+    """Beam search + our 4-gram LM for the live path; alpha/beta come from the last ml.speech.asr.eval run.
+    None when the LM file is missing (the live path then stays greedy)."""
+    import json
+
+    from ml.common.config import METRICS
+    from ml.speech.lm.ngram import LM_DIR, ArpaLM
+
+    p = LM_DIR / "interview_4gram.arpa"
+    if not p.exists():
+        return None
+    alpha, beta = 0.5, 1.0
+    tuned = METRICS / "asr.json"
+    if tuned.exists():
+        t = json.loads(tuned.read_text())
+        alpha, beta = t.get("alpha") or alpha, t.get("beta") or beta
+    return BeamDecoder(pieces, ArpaLM(p), alpha, beta, beam=beam, prune=-6.0)
+
+
+def words_from_tokens(pieces: list[str], ids: list[int]) -> list[str]:
+    out: list[str] = []
+    for i in ids:
+        p = pieces[i]
+        if p.startswith("▁") or not out:
+            out.append(p.lstrip("▁"))
+        else:
+            out[-1] += p
+    return [w for w in out if w]
+
+
+def retime(new: list[str], old: list[dict]) -> list[dict]:
+    """Give the beam-search words timestamps by matching them to the greedy words (same audio, same frames):
+    identical or equal-length replaced words copy the time, the rest share the surrounding gap by length."""
+    from difflib import SequenceMatcher
+
+    if not old:
+        return [{"word": w, "start_s": 0.0, "end_s": 0.0} for w in new]
+    out: list[dict | None] = [None] * len(new)
+    for op, i1, i2, j1, j2 in SequenceMatcher(None, [w["word"] for w in old], new, autojunk=False).get_opcodes():
+        if op in ("equal", "replace") and i2 - i1 == j2 - j1:
+            for k in range(j2 - j1):
+                out[j1 + k] = {"word": new[j1 + k], "start_s": old[i1 + k]["start_s"], "end_s": old[i1 + k]["end_s"]}
+    k = 0
+    while k < len(new):
+        if out[k] is not None:
+            k += 1
+            continue
+        j = k
+        while j < len(new) and out[j] is None:
+            j += 1
+        lo = out[k - 1]["end_s"] if k > 0 else old[0]["start_s"]
+        hi = out[j]["start_s"] if j < len(new) else old[-1]["end_s"]
+        hi = max(hi, lo)
+        total = sum(len(w) for w in new[k:j]) or 1
+        t = lo
+        for m in range(k, j):
+            d = (hi - lo) * len(new[m]) / total
+            out[m] = {"word": new[m], "start_s": round(t, 2), "end_s": round(t + d, 2)}
+            t += d
+        k = j
+    return out  # type: ignore[return-value]

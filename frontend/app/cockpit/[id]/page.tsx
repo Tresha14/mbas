@@ -7,6 +7,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GazePlot, Signal, TrendChart } from "@/components/charts";
+import { FlaggedMoments, LiveMetrics } from "@/components/live";
+import { ModelList } from "@/components/models";
 import { Header, VideoSlot } from "@/components/shell";
 import { Badge, Button, Card, cn, Disclosure, Dot, Empty, mmss, scoreTone, SectionLabel, Segmented, Sheet, Tabs, Textarea } from "@/components/ui";
 import { useAnalytics, type AnswerMsg, type Line } from "@/lib/analytics";
@@ -53,6 +55,9 @@ export default function Cockpit() {
   const [cat, setCat] = useState("all");
   const [jump, setJump] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [callWarning, setCallWarning] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const room = useRef<Room | null>(null);
   const [capture, setCapture] = useState<CallCapture | null>(null);
   const [callPicker, setCallPicker] = useState(false);
@@ -60,9 +65,12 @@ export default function Cockpit() {
   const { state, error } = useAnalytics(iv?.id ?? null);
 
   useEffect(() => {
-    api.interview(id).then((x) => { setIv(x); setNotes(x.notes); });
-    api.questions().then(setQuestions);
+    let cancelled = false;
+    api.interview(id).then((x) => { setIv(x); setNotes(x.notes); }).catch((e) => setLoadError((e as Error).message));
+    api.questions().then(setQuestions).catch(() => undefined);
     joinRoom(id, {
+      onWarning: setCallWarning,
+      onConnection: (s) => setCallWarning(s === "connected" ? null : s === "reconnecting" ? "Video connection lost. Reconnecting…" : "Disconnected from the video call. Reload the page to rejoin; analysis data keeps arriving."),
       onTrack: (kind, el, p) => {
         if (roleOf(p) !== "candidate") return;
         if (kind === "camera") setCam(el);
@@ -70,9 +78,10 @@ export default function Cockpit() {
         // a captured call is already playing in its own tab / app: playing it here too would echo
         if (kind === "audio" && el && !p.identity.startsWith(CAPTURE_PREFIX)) document.body.appendChild(el);
       },
-    }).then((r) => (room.current = r)).catch(() => undefined);
+    }).then((r) => { if (cancelled) r.disconnect(); else room.current = r; })
+      .catch((e) => setCallWarning(`Could not connect to the video call (${(e as Error).message}). Live analysis data may still appear.`));
     const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => { clearInterval(t); room.current?.disconnect(); };
+    return () => { cancelled = true; clearInterval(t); room.current?.disconnect(); };
   }, [id]);
 
   const last = state.windows[state.windows.length - 1];
@@ -92,22 +101,37 @@ export default function Cockpit() {
     if (target) setTimeout(() => document.getElementById(`t-${Math.floor(target.start_s)}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
   }, [jump, state.lines]);
 
-  async function ask(q: Question) {
+  async function attempt(fn: () => Promise<void>) {
+    setActionError(null);
+    try { await fn(); } catch (e) { setActionError((e as Error).message); }
+  }
+  const ask = (q: Question) => attempt(async () => {
     if (!iv) return;
     if (current && current.question_id !== q.question_id) await api.event(iv.id, "answer_end", current);
     await api.event(iv.id, "ask", q);
     setAsked((a) => ({ ...a, ...(current ? { [current.question_id]: "done" } : {}), [q.question_id]: "asking" }));
-  }
-  async function endAnswer() {
+  });
+  const endAnswer = () => attempt(async () => {
     if (!iv || !current) return;
     await api.event(iv.id, "answer_end", current);
     setAsked((a) => ({ ...a, [current.question_id]: "done" }));
     setFlow("answers");
-  }
-  async function startStop() {
+  });
+  const startStop = () => attempt(async () => {
     if (!iv) return;
     if (iv.status === "live") capture?.stop();
     setIv(iv.status === "live" ? await api.stop(iv.id) : await api.start(iv.id));
+  });
+
+  if (loadError) {
+    return (
+      <>
+        <Header wide />
+        <main className="mx-auto max-w-xl px-6 py-16">
+          <Card><Empty title="Couldn't open this interview" text={loadError} action={<Link href="/dashboard"><Button>Back to interviews</Button></Link>} /></Card>
+        </main>
+      </>
+    );
   }
   async function startCall(source: CallSource) {
     if (!iv) return;
@@ -172,8 +196,14 @@ export default function Cockpit() {
               <h1 className="font-display text-2xl tracking-tight">{iv?.candidate_name ?? "Candidate"}</h1>
               <p className="text-[13px] text-muted">{iv?.title}</p>
             </div>
-            {(captureMsg || error) && <span className="text-[13px] text-bad">{captureMsg || error}</span>}
+            {(captureMsg || actionError || error) && <span className="text-[13px] text-bad">{captureMsg || actionError || error}</span>}
           </div>
+          {callWarning && <p className="rounded-2xl bg-warn/10 px-4 py-3 text-[13px] text-warn">{callWarning}</p>}
+          {state.models?.vision === false && (
+            <p className="rounded-2xl bg-warn/10 px-4 py-3 text-[13px] text-warn">
+              Camera analysis is off because the vision models are not available. Attention, gaze, blinks and look-away alerts will not appear. Speech analysis still works.
+            </p>
+          )}
 
           <div className="relative">
             <VideoSlot el={main} label={swap ? "Shared screen" : "Camera"} className="aspect-video w-full" />
@@ -193,8 +223,10 @@ export default function Cockpit() {
             </AnimatePresence>
           </div>
 
+          <LiveMetrics state={state} id={id} />
+
           <Card className="p-0">
-            <div className="px-6 pt-5"><Tabs items={[{ value: "transcript", label: "Transcript" }, { value: "timeline", label: "Timeline" }, { value: "gaze", label: "Gaze" }]} value={detail} onChange={setDetail} /></div>
+            <div className="px-6 pt-5"><Tabs items={[{ value: "transcript", label: "Transcript" }, { value: "flags", label: `Flagged${state.alerts.length ? ` · ${state.alerts.length}` : ""}` }, { value: "timeline", label: "Timeline" }, { value: "gaze", label: "Gaze" }, { value: "models", label: "Models" }]} value={detail} onChange={setDetail} /></div>
             <div className="px-3 py-4">
               {detail === "transcript" && (
                 <div className="max-h-80 space-y-0.5 overflow-y-auto">
@@ -203,6 +235,8 @@ export default function Cockpit() {
                     : lines.map((l, i) => <TranscriptLine key={i} l={l} active={jump != null && Math.abs(l.start_s - jump) < 3} />)}
                 </div>
               )}
+              {detail === "flags" && <FlaggedMoments alerts={state.alerts} onPick={setJump} />}
+              {detail === "models" && <div className="max-h-96 overflow-y-auto"><ModelList compact live={state.models} /></div>}
               {detail === "timeline" && (
                 <div className="px-3">
                   {trend.length < 2 ? <Empty title="Not enough data yet" text="Attention and engagement appear every few seconds once analysis starts." /> : (

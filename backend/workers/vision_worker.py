@@ -18,6 +18,7 @@ import numpy as np
 from backend.bus import make_bus
 from backend.config import settings
 from backend.db import Database, WindowScore, clean_json
+from backend.flags import raise_flag
 
 HOP_S, WIN_S = 2.5, 5.0
 
@@ -52,9 +53,8 @@ class InterviewVision:
         if r.face and not r.on_screen or not r.face:
             self.off_since = self.off_since if self.off_since is not None else t
             if t - self.off_since >= 3.0:
-                self.bus.publish(f"analytics:{self.id}", {"kind": "alert", "alert": "off_screen" if r.face else "no_face",
-                                                         "t_s": t, "text": "Looking away from the screen for 3 s"
-                                                         if r.face else "Face not visible for 3 s"})
+                raise_flag(self.bus, self.db, self.id, "off_screen" if r.face else "no_face", t,
+                           "Looking away from the screen for 3 s" if r.face else "Face not visible for 3 s")
                 self.off_since = t + 1000      # one alert per episode
         else:
             self.off_since = None
@@ -79,8 +79,7 @@ class InterviewVision:
                                                  "blink_rate": f.get("blink_rate_per_min"), "reading": f.get("reading_pattern_flag"),
                                                  "saccade_rate": f.get("saccade_rate_hz")})
         if f.get("reading_pattern_flag"):
-            self.bus.publish(f"analytics:{self.id}", {"kind": "alert", "alert": "reading", "t_s": t,
-                                                     "text": "Eye movements look like reading from another screen"})
+            raise_flag(self.bus, self.db, self.id, "reading", t, "Eye movements look like reading from another screen")
 
     def bus_state(self, key: str) -> dict:
         return self.bus.get_state(f"{self.id}:{key}")
@@ -98,8 +97,15 @@ def run(bus=None, db=None, stop=lambda: False):
             cursors[name] = mid
             if name == "control":
                 if msg["type"] == "start":
-                    live[msg["interview_id"]] = InterviewVision(msg["interview_id"], bus, db)
-                    cursors[f"frames:{msg['interview_id']}"] = bus.last_id(f"frames:{msg['interview_id']}")
+                    iid = msg["interview_id"]
+                    try:
+                        live[iid] = InterviewVision(iid, bus, db)
+                        cursors[f"frames:{iid}"] = bus.last_id(f"frames:{iid}")
+                        bus.publish(f"analytics:{iid}", {"kind": "status", "models": {"vision": True}})
+                    except Exception as e:  # noqa: BLE001 - missing / untrained vision models must not kill the worker
+                        print(f"[vision] disabled for interview {iid}: {e}", flush=True)
+                        bus.publish(f"analytics:{iid}", {"kind": "status", "models": {"vision": False},
+                                                         "note": f"vision models unavailable: {type(e).__name__}"})
                 elif msg["type"] == "stop":
                     live.pop(msg["interview_id"], None)
                     cursors.pop(f"frames:{msg['interview_id']}", None)

@@ -10,7 +10,7 @@ candidate_view:   strengths, 3 improvement areas with timestamps and concrete ti
 from __future__ import annotations
 
 import math
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 import numpy as np
 
@@ -73,9 +73,35 @@ def build_reports(data: dict) -> tuple[dict, dict]:
             "follow_ups": [{"reason": f["reason"], "text": f["text"], "source": f["source"]} for f in fus[a["question_ref"]]],
         })
         cards[-1].update(card_details(cards[-1], a, windows))
-    radar = {k: _f(np.nanmean([c["subscores"].get(k, np.nan) for c in cards])) if cards else None for k in SUB}
+
+    def _nanmean_safe(vals):
+        arr = [v for v in vals if v is not None and not (isinstance(v, float) and np.isnan(v))]
+        return _f(np.mean(arr)) if arr else None
+    radar = {k: _nanmean_safe([c["subscores"].get(k) for c in cards]) if cards else None for k in SUB}
     eff = [c["effectiveness"] for c in cards if c["effectiveness"] is not None]
-    timeline = [{"t_s": w["end_s"], "attention": _f(w.get("attention")), "engagement": w.get("engagement")} for w in windows]
+
+    def _blink(w):
+        return _f((w.get("features") or {}).get("blink_rate_per_min"))
+
+    timeline = [{"t_s": w["end_s"], "attention": _f(w.get("attention")), "engagement": w.get("engagement"),
+                 "facing": _f(None if w.get("on_screen_ratio") is None else 100 * w["on_screen_ratio"]), "blink": _blink(w)}
+                for w in windows]
+    speech = sorted(data.get("speech") or [], key=lambda x: x["t_s"])
+    flags = sorted(data.get("flags") or [], key=lambda x: x["t_s"])
+    speech_timeline = [{"t_s": x["t_s"], "wpm": _f(x.get("wpm"), 0),
+                        "pause_pct": _f(None if x.get("pause_ratio") is None else 100 * x["pause_ratio"], 0),
+                        "fillers": _f(x.get("fillers_per_100w")), "hedges": _f(x.get("hedges_per_100w"))} for x in speech]
+
+    def _mean(vals):
+        v = [x for x in vals if x is not None]
+        return _f(np.mean(v)) if v else None
+
+    delivery = {
+        "wpm": _mean([x["wpm"] for x in speech_timeline]), "pause_pct": _mean([x["pause_pct"] for x in speech_timeline]),
+        "fillers_per_100w": _mean([x["fillers"] for x in speech_timeline]), "hedges_per_100w": _mean([x["hedges"] for x in speech_timeline]),
+        "camera_facing_pct": _mean([x["facing"] for x in timeline]), "blinks_per_min": _mean([x["blink"] for x in timeline]),
+        "flag_counts": dict(Counter(f["kind"] for f in flags)),
+    }
     cand_text = " ".join(s["text"] for s in sorted(data.get("transcript", []), key=lambda s: s["start_s"])
                          if s.get("speaker") == "candidate") or " ".join(c["transcript"] or "" for c in cards)
     sections, raw = behaviour_sections(cards, windows, cand_text)
@@ -83,11 +109,11 @@ def build_reports(data: dict) -> tuple[dict, dict]:
     eng = [w.get("engagement") for w in windows if w.get("engagement")]
     interviewer = {
         "summary": {"questions": len(cards), "mean_effectiveness": _f(np.mean(eff)) if eff else None,
-                    "mean_attention": _f(np.nanmean([w["attention"] for w in windows if w.get("attention") is not None]))
-                    if windows else None,
+                    "mean_attention": _mean([w.get("attention") for w in windows]),
                     "engaged_share": round(eng.count("engaged") / len(eng), 3) if eng else None,
                     "follow_ups": len(data["follow_ups"])},
-        "radar": radar, "cards": cards, "timeline": timeline,
+        "radar": radar, "cards": cards, "timeline": timeline, "delivery": delivery, "speech_timeline": speech_timeline,
+        "flags": [{"t_s": f["t_s"], "time": _mmss(f["t_s"]), "kind": f["kind"], "text": f.get("text", "")} for f in flags],
         "scorecard": scorecard(cards, raw), "behaviour": sections, "matrix": confidence_matrix(cards),
         "pressure": pressure_response(cards, difficulty), "moments": key_moments(cards, windows, raw),
         "follow_ups": [{**f, "time": _mmss(f["t_s"])} for f in sorted(data["follow_ups"], key=lambda f: f["t_s"])],
