@@ -37,3 +37,6 @@ checkpoints/
 Thumbs.db
 .vscode/
 .idea/
+
+# trained-model bundle shared by the team (extract into the repo root, never commit)
+mbas_models_*.zip

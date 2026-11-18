@@ -61,6 +61,7 @@ class Track:
     vad_ctx: np.ndarray = field(default_factory=lambda: np.zeros(8000, np.float32))
     asr: object | None = None
     finals: list[dict] = field(default_factory=list)
+    asr_anchored: bool = False                    # StreamingASR clock set to the first chunk's session time
     conf: list[tuple[float, float]] = field(default_factory=list)          # (t_s, mean max-prob) per final
 
     def clip(self, t0: float, t1: float) -> np.ndarray:
@@ -139,6 +140,8 @@ class InterviewSpeech:
         self.bus.set_state(f"{self.id}:vad", st)
         # streaming ASR
         if tr.asr is not None:
+            if not tr.asr_anchored:     # StreamingASR counts from 0; this track's audio starts at the first chunk's t_s
+                tr.asr.t0, tr.asr_anchored = t0, True
             with Timer(self.bus, "asr_chunk"):
                 results = tr.asr.accept(x)
             for r in results:
