@@ -271,7 +271,12 @@ class InterviewSpeech:
         transcript = " ".join(f["text"] for f in cand.finals if ask - 0.5 <= f["start_s"] <= end + 1)
         events = self.audio_events(cand, q_end, end)
         beh = answer_behaviour(f"{self.id}_A{ev['question_ref']}", audio, transcript, cand_segs, q_end, end, clip_t0, events)
-        ans = self.m.answer_scores(ev.get("text", ""), transcript) if transcript.strip() else None
+        ans = None
+        if transcript.strip():
+            try:
+                ans = self.m.answer_scores(ev.get("text", ""), transcript)
+            except Exception as e:  # noqa: BLE001 - a broken answer model must not lose the rest of the answer
+                print(f"[speech] answer-quality model failed for interview {self.id}: {type(e).__name__}: {e}", flush=True)
         with self.db.session() as s:
             wins = [row_dict(w) for w in s.scalars(select(WindowScore).where(
                 WindowScore.interview_id == self.id, WindowScore.end_s > ask, WindowScore.start_s < end))]
