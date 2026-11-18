@@ -1,6 +1,6 @@
 # MBAS model report
 
-_Generated 2026-10-25 by `python -m tools.model_report`._
+_Generated 2026-11-19 by `python -m tools.model_report`._
 
 Every model was defined in PyTorch and trained from random initialisation on public raw datasets, the synthetic dataset and (when labelled) our own recordings. No pre-trained weights or AI APIs are used.
 
@@ -8,18 +8,132 @@ Every model was defined in PyTorch and trained from random initialisation on pub
 
 | Stage | Model | Epochs | Headline test result |
 | --- | --- | ---: | --- |
-| 4 | Face + landmark detector | - | not trained yet |
-| 4 | Gaze + iris CNN | - | not trained yet |
+| 4 | Face + landmark detector | 60 | webcam-crop AP@0.5 0.8574, recall 0.7347 |
+| 4 | Gaze + iris CNN | 25 | angular error 5.284 deg (baseline 9.635) |
 | 5 | Head-pose CNN | 20 | MAE yaw/pitch/roll 10.753/10.697/5.484 deg |
 | 5 | Engagement MLP + attention score | - | engagement macro-F1 0.7464, attention MAE 3.156 |
 | 5 | Engagement CNN-GRU | - | not trained yet |
-| 6 | Voice activity detector | - | not trained yet |
-| 6 | Conformer-CTC ASR | - | not trained yet |
-| 7 | Disfluency CRNN | 14 | filler F1 0.6804, repetition F1 0.4033, prolongation F1 0.4618, block F1 0.293 |
+| 6 | Voice activity detector | 8 | frame F1 0.9547 (energy baseline 0.7818) |
+| 6 | Conformer-CTC ASR | 40 | librispeech_test_clean: 0.159/0.1573/0.1366 (WER greedy/beam/beam+LM) |
+| 7 | Disfluency CRNN | 25 | filler F1 0.6935, repetition F1 0.4253, prolongation F1 0.4463, block F1 0.3034 |
 | 7 | Speaking pattern + hesitation index | - | pattern macro-F1 0.8098, hesitation MAE 4.317 |
 | 8 | Answer-quality transformer | 40 | quality QWK 0.8574 vs TF-IDF 0.7726 |
 | 8 | Multimodal fusion | 150 | effectiveness MAE 5.876, follow-up F1 0.9586 |
 | 8 | Meeting head | - | AMI balance MAE 0.0317 |
+
+---
+
+## Stage 4: Face + landmark detector
+
+
+## Task
+
+Detect faces and 5 landmarks (eyes, nose, mouth corners) in a webcam frame; eye landmarks feed the eye-crop extractor for the gaze/iris CNN.
+
+## Architecture
+
+| | |
+| --- | --- |
+| type | single-shot, BlazeBlocks (depthwise 5x5 + pointwise, residual) |
+| input | 128x128 RGB, letterboxed |
+| anchors | 896 (16x16 x 2 + 8x8 x 6), square |
+| parameters | 382,740 |
+| heads | face logit, box (cx, cy, w, h), 5 key points |
+
+## Training data
+
+WIDER FACE train (90%) with RetinaFace 5-point landmarks; random face-centred square crops (1.4-6x face size), photometric jitter, horizontal flip with landmark swap.
+
+## Training
+
+| | |
+| --- | --- |
+| epochs | 60 |
+| batch | 64 |
+| optimiser | AdamW lr 0.002, cosine, warm-up 500 |
+| loss | focal (alpha .25, gamma 2) + smooth-L1 box + 0.5 x smooth-L1 landmarks |
+| curves | docs/metrics/face_detector_curves.png |
+| logs | runs/face_detector (TensorBoard) |
+
+## Results (WIDER val = our test split)
+
+| | |
+| --- | --- |
+| webcam-style crops AP@0.5 | 0.8574 |
+| webcam-style crops recall@0.5 | 0.7347 |
+| full images AP@0.5 (faces >= 8% of input) | 0.5345 |
+| landmark NME (val, inter-ocular) | 0.3792 |
+| CPU latency (torch, 4 threads) | 10.546 ms (94.8 fps) |
+| PR curve | docs/metrics/face_detector_pr.png |
+
+## Limitations
+
+- Faces smaller than ~10 px at 128 px input are not detected (not needed for webcams).
+- Not yet fine-tuned on our own frames: the 1,500-frame key-point set from our recordings is the next step once sessions exist (FaceDataset accepts the same format).
+- WIDER is crowd/event photography; webcam lighting (backlit, dim) is covered only by photometric augmentation until our recordings are added.
+
+![face_detector_curves](metrics/face_detector_curves.png)
+
+![face_detector_pr](metrics/face_detector_pr.png)
+
+![face_detector_smoke_curves](metrics/face_detector_smoke_curves.png)
+
+Metrics: `docs/metrics/face_detector.json`
+
+---
+
+## Stage 4: Gaze + iris CNN
+
+
+## Task
+
+Estimate gaze direction (pitch, yaw), the iris centre in each eye crop and on/off-screen from two 36x60 eye crops plus head pose. Feeds attention signals: off-screen %, glance-away count, saccade rate, blink rate, reading-pattern flag (ml/vision/gaze_iris/signals.py).
+
+## Architecture
+
+| | |
+| --- | --- |
+| eye encoder | 4 conv blocks (32-64-128-128), shared by both eyes |
+| trunk | concat(2 x 128 + head pose 2) -> 256 -> 128 |
+| heads | gaze 2, iris 4, on-screen 1 |
+| parameters | 1,141,287 |
+
+## Training data
+
+MPIIGaze normalised eye images, person-wise split (train/val/test persons in data/splits/public/mpiigaze). Flip augmentation swaps eyes and mirrors yaw.
+
+## Iris targets
+
+eyeball model fitted to a classical dark-pupil detector: {'ax': 0.48728672809456614, 'bx': -0.22662725765336847, 'ay': 0.40219017641269905, 'by': -0.1708512532725962, 'n': 11842, 'corr_x_yaw': -0.307, 'corr_y_pitch': -0.211}
+
+## Training
+
+| | |
+| --- | --- |
+| epochs | 25 |
+| batch | 256 |
+| loss | L1 gaze + 0.5 L1 iris + BCE on-screen (masked) |
+| curves | docs/metrics/gaze_iris_curves.png |
+
+## Results (held-out persons)
+
+| | |
+| --- | --- |
+| mean angular error | 5.284 deg |
+| median angular error | 5.188 deg |
+| mean-gaze baseline | 9.635 deg |
+| on/off-screen F1 | pending our labelled windows (see note) |
+| CPU latency | 36.602 ms |
+
+## Limitations
+
+- MPIIGaze crops are perspective-normalised; our webcam crops use roll correction only, so a domain gap remains until fine-tuning on our 60 s calibration captures.
+- On/off-screen in the live system: per-session calibration box on predicted gaze (signals.ScreenCalibration), not the untrained on-screen head.
+- Glasses with strong reflections and very dim light reduce accuracy (bias check, Stage 10).
+
+![gaze_iris_curves](metrics/gaze_iris_curves.png)
+
+Metrics: `docs/metrics/gaze_iris.json`
 
 ---
 
@@ -106,6 +220,93 @@ Metrics: `docs/metrics/window_models.json`
 
 ---
 
+## Stage 6: Voice activity detector
+
+
+## Task
+
+Speech / non-speech every 10 ms on each participant's audio track; feeds the ASR, the pause model and the conversation analyser.
+
+## Architecture
+
+| | |
+| --- | --- |
+| front end | 40-band log-mel (25 ms / 10 ms) |
+| network | 4 dilated 1-D conv layers (64 ch, receptive field ~330 ms) |
+| post-processing | hysteresis 0.5 / 0.35, 200 ms hangover, 120 ms minimum speech |
+| parameters | 45,377 |
+
+## Training data
+
+LibriSpeech (+ Common Voice) utterances placed with random silences in 8 s mixtures, mixed with recorded noise (data/raw/noise) or generated room noise (white/pink/brown/hum/babble) at 0-25 dB SNR; targets from the clean utterances' energy mask.
+
+## Results (test mixtures, unseen speakers)
+
+| | |
+| --- | --- |
+| frame F1 raw | 0.9726 |
+| frame F1 smoothed | 0.9547 |
+| energy-threshold baseline | 0.7818 |
+| CPU latency per 640 ms chunk | 3.473 ms |
+
+## Limitations
+
+Targets are energy masks of clean read speech; our sessions (spontaneous speech, laptop mics) are the real test once labelled; record lab/hostel noise into data/raw/noise to replace generated noise.
+
+![vad_curves](metrics/vad_curves.png)
+
+Metrics: `docs/metrics/vad.json`
+
+---
+
+## Stage 6: Conformer-CTC ASR
+
+
+## Task
+
+Streaming transcription of each participant's audio track (< 2 s delay); word timestamps for the transcript panel, the pause model and the fusion features.
+
+## Architecture
+
+| | |
+| --- | --- |
+| front end | 80-band log-mel, per-utterance CMVN, SpecAugment (2 freq x 27, 10 time x 5%) |
+| encoder | Conv2d x2 subsampling (40 ms) + 12 Conformer blocks, d_model 176, 4 heads, conv kernel 31 |
+| output | CTC over our SentencePiece vocabulary (1000 pieces) |
+| parameters | 9,724,648 |
+
+## Training
+
+LibriSpeech train-clean-100 (+ Common Voice Indian English + our transcripts when available); speed perturbation 0.9/1.0/1.1, Noam schedule, fp16, dynamic chunk training (streaming), checkpoint averaging.
+
+## Language model
+
+our interpolated Kneser-Ney 4-gram (ml/speech/lm/ngram.py), alpha 0.3, beta 1.0
+
+## WER (greedy / beam / beam+LM)
+
+| | |
+| --- | --- |
+| librispeech_test_clean | 0.159 / 0.1573 / 0.1366 |
+| common_voice_indian_test | no data yet |
+| our_sessions_test | no data yet |
+
+## Whisper-small (benchmark only, not in the product)
+
+not run
+
+## Why a gap to Whisper is expected
+
+Whisper-small was trained on 680,000 h of audio; ours on ~100 h. The gap comes from training data size, not from the architecture.
+
+![asr_curves](metrics/asr_curves.png)
+
+![asr_overfit_curves](metrics/asr_overfit_curves.png)
+
+Metrics: `docs/metrics/asr.json`
+
+---
+
 ## Stage 7: Disfluency CRNN
 
 
@@ -129,10 +330,10 @@ SEP-28k (podcast clips, label present when >= 2 of 3 annotators marked it), spli
 
 | | |
 | --- | --- |
-| filler F1 / AUC | 0.6804 / 0.8667 (always-yes F1 0.3966) |
-| repetition F1 / AUC | 0.4033 / 0.7019 (always-yes F1 0.337) |
-| prolongation F1 / AUC | 0.4618 / 0.8521 (always-yes F1 0.1728) |
-| block F1 / AUC | 0.293 / 0.6723 (always-yes F1 0.2135) |
+| filler F1 / AUC | 0.6935 / 0.8784 (always-yes F1 0.3966) |
+| repetition F1 / AUC | 0.4253 / 0.7103 (always-yes F1 0.337) |
+| prolongation F1 / AUC | 0.4463 / 0.856 (always-yes F1 0.1728) |
+| block F1 / AUC | 0.3034 / 0.6791 (always-yes F1 0.2135) |
 
 ## Limitations
 

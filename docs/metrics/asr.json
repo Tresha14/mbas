@@ -1,0 +1,106 @@
+{
+  "model": "asr",
+  "generated": "2026-11-19T00:06:41",
+  "checkpoint": [
+    "epoch_036.pt",
+    "epoch_037.pt",
+    "epoch_038.pt",
+    "epoch_039.pt",
+    "epoch_040.pt"
+  ],
+  "epochs_trained": 40,
+  "params": 9724648,
+  "lm": "interview_4gram.arpa",
+  "alpha": 0.3,
+  "beta": 1.0,
+  "lm_tuning_dev": [
+    {
+      "alpha": 0.3,
+      "beta": 0.0,
+      "dev_wer": 0.1362
+    },
+    {
+      "alpha": 0.3,
+      "beta": 1.0,
+      "dev_wer": 0.1312
+    },
+    {
+      "alpha": 0.3,
+      "beta": 2.0,
+      "dev_wer": 0.1341
+    },
+    {
+      "alpha": 0.5,
+      "beta": 0.0,
+      "dev_wer": 0.155
+    },
+    {
+      "alpha": 0.5,
+      "beta": 1.0,
+      "dev_wer": 0.1376
+    },
+    {
+      "alpha": 0.5,
+      "beta": 2.0,
+      "dev_wer": 0.1331
+    },
+    {
+      "alpha": 0.8,
+      "beta": 0.0,
+      "dev_wer": 0.2222
+    },
+    {
+      "alpha": 0.8,
+      "beta": 1.0,
+      "dev_wer": 0.1908
+    },
+    {
+      "alpha": 0.8,
+      "beta": 2.0,
+      "dev_wer": 0.1688
+    }
+  ],
+  "wer": {
+    "librispeech_test_clean": {
+      "utterances": 2620,
+      "hours": 5.4,
+      "greedy": 0.159,
+      "beam": 0.1573,
+      "beam_lm": 0.1366,
+      "examples": [
+        {
+          "ref": "a story",
+          "hyp": "a story"
+        },
+        {
+          "ref": "direction",
+          "hyp": "direction"
+        },
+        {
+          "ref": "verse two",
+          "hyp": "first to"
+        },
+        {
+          "ref": "oh emil",
+          "hyp": "oh a me"
+        },
+        {
+          "ref": "indeed ah",
+          "hyp": "indeed a"
+        }
+      ]
+    },
+    "common_voice_indian_test": {
+      "note": "no data yet"
+    },
+    "our_sessions_test": {
+      "note": "no data yet"
+    }
+  },
+  "whisper_small_benchmark": "not run (optional, comparison only)",
+  "cpu_latency_window_4.96s_ms": {
+    "median_ms": 28.264,
+    "p90_ms": 29.259,
+    "fps": 35.4
+  }
+}
