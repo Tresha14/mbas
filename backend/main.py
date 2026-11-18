@@ -186,15 +186,19 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
                                            c["role"]), "url": cfg.livekit_url, "identity": identity}
 
     @app.post("/api/interviews/{interview_id}/capture-token")
-    def capture_token(interview_id: int, c: dict = Depends(host)):
-        """Token for the interviewer's browser to publish a captured Google Meet tab as the candidate's camera + mic,
-        so the bot and workers analyse a call held on Meet exactly like one held in our own room."""
+    def capture_token(interview_id: int, platform: str = "meet", c: dict = Depends(host)):
+        """Token for the interviewer's browser to publish a captured external call (a Google Meet / Zoom / Teams tab,
+        or the Zoom desktop app's window with system audio) as the candidate's camera + mic, so the bot and workers
+        analyse a call held elsewhere exactly like one held in our own room."""
+        names = {"meet": "Google Meet", "zoom": "Zoom", "teams": "Microsoft Teams"}
+        if platform not in names:
+            raise HTTPException(422, f"platform must be one of {sorted(names)}")
         with db.session() as s:
             iv = own(s, interview_id, c)
             role = "candidate" if iv.mode == "interview" else "participant"
-            identity = f"meet-capture-{iv.id}"
+            identity = f"call-capture-{iv.id}"
             return {"token": livekit_token(cfg.livekit_key, cfg.livekit_secret, iv.room, identity,
-                                           iv.candidate_name or "Google Meet", role),
+                                           iv.candidate_name or names[platform], role),
                     "url": cfg.livekit_url, "identity": identity}
 
     @app.post("/api/interviews/{interview_id}/start")

@@ -19,7 +19,10 @@
         "long_pause_count": {"type": "integer", "description": "mid-answer silences > 1 s"},
         "long_pause_total_s": {"type": "number"},
         "mean_pause_duration_s": {"type": "number"},
-        "pause_ratio": {"type": "number", "minimum": 0, "maximum": 1}
+        "pause_ratio": {"type": "number", "minimum": 0, "maximum": 1},
+        "longest_pause_s": {"type": "number", "description": "longest mid-answer silence"},
+        "longest_pause_at_s": {"type": ["number", "null"], "description": "session time the longest silence starts"},
+        "very_long_pause_count": {"type": "integer", "description": "mid-answer silences > 3 s"}
       }
     },
     "prosody": {
@@ -36,7 +39,11 @@
         "energy_std_db": {"type": "number"},
         "volume_consistency": {"type": "number", "minimum": 0, "maximum": 1},
         "syllable_rate": {"type": "number", "description": "energy peaks per second of speech"},
-        "speech_rate_variability": {"type": "number", "description": "coefficient of variation of the 2 s syllable rate"}
+        "speech_rate_variability": {"type": "number", "description": "coefficient of variation of the 2 s syllable rate"},
+        "voice_break_count": {"type": "integer", "description": "voice breaks ('cracks'): sudden >= 7 semitone pitch jumps between two steady stretches"},
+        "voice_break_times_s": {"type": "array", "items": {"type": "number"}, "description": "session time of each break"},
+        "voice_break_rate_per_min": {"type": ["number", "null"], "description": "per minute of voiced speech"},
+        "pitch_jitter_pct": {"type": ["number", "null"], "description": "frame-level pitch shakiness (second difference of the period)"}
       }
     },
     "text_hesitation": {

@@ -36,18 +36,22 @@ def question_end(interviewer_segs: list[tuple[float, float]], ask_s: float, answ
 
 
 def answer_pauses(cand_segs: list[tuple[float, float]], q_end_s: float, answer_end_s: float,
-                  long_pause_s: float = 1.0) -> dict:
+                  long_pause_s: float = 1.0, very_long_pause_s: float = 3.0) -> dict:
     segs = [(max(a, q_end_s), min(b, answer_end_s)) for a, b in cand_segs if b > q_end_s and a < answer_end_s]
     if not segs:
         return {"response_latency_s": round(answer_end_s - q_end_s, 3), "answer_start_s": None, "speech_s": 0.0,
                 "long_pause_count": 0, "long_pause_total_s": 0.0, "mean_pause_duration_s": 0.0, "pause_ratio": 1.0,
-                "answer_duration_s": 0.0}
+                "answer_duration_s": 0.0, "longest_pause_s": 0.0, "longest_pause_at_s": None, "very_long_pause_count": 0}
     start, end = segs[0][0], segs[-1][1]
     gaps = [b[0] - a[1] for a, b in zip(segs, segs[1:])]
     longs = [g for g in gaps if g > long_pause_s]
     speech = sum(b - a for a, b in segs)
     dur = max(end - start, 1e-6)
+    k = int(np.argmax(gaps)) if gaps else None
     return {"response_latency_s": round(start - q_end_s, 3), "answer_start_s": round(start, 3),
             "speech_s": round(speech, 3), "long_pause_count": len(longs), "long_pause_total_s": round(sum(longs), 3),
             "mean_pause_duration_s": round(float(np.mean(longs)), 3) if longs else 0.0,
-            "pause_ratio": round(1 - speech / dur, 4), "answer_duration_s": round(dur, 3)}
+            "pause_ratio": round(1 - speech / dur, 4), "answer_duration_s": round(dur, 3),
+            "longest_pause_s": round(gaps[k], 3) if k is not None else 0.0,
+            "longest_pause_at_s": round(segs[k][1], 3) if k is not None else None,
+            "very_long_pause_count": sum(g > very_long_pause_s for g in gaps)}

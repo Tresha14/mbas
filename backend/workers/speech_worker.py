@@ -30,6 +30,7 @@ from ml.behaviour.text_hesitation import FILLERS, words as split_words
 
 SR = 16000
 FRAME = 160
+SILENCE_DB = -52.0           # absolute floor under the VAD (dBFS per 10 ms frame)
 
 
 @dataclass
@@ -93,17 +94,21 @@ class InterviewSpeech:
         tr.audio.append((t0, x))
         tr.audio = [a for a in tr.audio if a[0] > t0 - 900]          # keep 15 min for answer analysis
         # VAD with 0.5 s of context
+        fr = x[: len(x) // FRAME * FRAME].reshape(-1, FRAME)
+        frame_db = 10 * np.log10((fr ** 2).mean(1) + 1e-10)
         if self.m.vad is not None:
             with Timer(self.bus, "vad"):
                 p = self.m.vad(np.concatenate([tr.vad_ctx, x]))
             n = len(x) // FRAME
             probs = p[-n - 1:-1] if len(p) > n else p
+            # the VAD normalises by the mean level of its 1.1 s input, so a window of pure room noise looks like
+            # speech; frames below an absolute floor (quiet room ~ -60 dBFS, speech -35..-20) are never speech
+            probs = np.where(frame_db[:len(probs)] < SILENCE_DB, 0.0, probs)
             from ml.speech.vad.model import smooth
 
             sp = smooth(np.concatenate([np.zeros(0), probs]), hangover=10, min_speech=5)[:n]
         else:   # energy fallback until the VAD is trained
-            fr = x[: len(x) // FRAME * FRAME].reshape(-1, FRAME)
-            sp = 10 * np.log10((fr ** 2).mean(1) + 1e-10) > -45
+            sp = frame_db > -45
         tr.vad_ctx = x[-8000:]
         f0 = int(round(t0 * 100))
         if len(tr.speech) < f0 + len(sp):
@@ -233,7 +238,10 @@ class InterviewSpeech:
                              "response_latency_s": beh["timing"]["response_latency_s"],
                              "wpm": beh["prosody"].get("speaking_rate_wpm"),
                              "fillers": beh["text_hesitation"]["filler_count"],
-                             "long_pauses": beh["timing"]["long_pause_count"]},
+                             "long_pauses": beh["timing"]["long_pause_count"],
+                             "longest_pause_s": beh["timing"].get("longest_pause_s"),
+                             "voice_breaks": beh["prosody"].get("voice_break_count"),
+                             "jitter_pct": beh["prosody"].get("pitch_jitter_pct")},
                "answer_model": ans, "fusion": fus, "rule_flags": flags}
         with self.db.session() as s:
             s.add(AnswerScore(interview_id=self.id, question_ref=ev["question_ref"],

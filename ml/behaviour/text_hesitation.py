@@ -23,17 +23,48 @@ def count_phrases(text: str, phrases: list[str]) -> int:
     return sum(t.count(f" {p} ") for p in phrases)
 
 
-def filler_count(ws: list[str], text: str) -> int:
-    """Single-word fillers; 'like'/'actually'/'basically'/'so' count only when not used as content words."""
-    n = 0
+def filler_tokens(ws: list[str]) -> list[str]:
+    """Single-word fillers in order; 'like'/'actually'/'basically' count only when not used as content words."""
+    out = []
     for i, w in enumerate(ws):
         if w in ("um", "uh", "umm", "uhh", "er", "erm", "ah", "hmm", "hm", "mm", "matlab", "achha", "acha"):
-            n += 1
+            out.append(w)
         elif w in ("basically", "actually") and (i == 0 or ws[i - 1] in FILLERS or i + 1 < len(ws) and ws[i + 1] in ("i", "we", "it", "the")):
-            n += 1
+            out.append(w)
         elif w == "like" and i > 0 and ws[i - 1] not in ("would", "i", "you", "we", "they", "looks", "feel", "something"):
-            n += 1
-    return n + count_phrases(text, ["you know"])
+            out.append(w)
+    return out
+
+
+def filler_count(ws: list[str], text: str) -> int:
+    return len(filler_tokens(ws)) + count_phrases(text, ["you know"])
+
+
+# spelling variants counted as one filler in the breakdown
+_FILLER_FORM = {"umm": "um", "uhh": "uh", "erm": "er", "hm": "hmm", "mm": "hmm", "acha": "achha"}
+# function words never reported as crutch words
+STOP_WORDS = set("""a an the and or but if so of to in on at by for with from as is are was were be been being am i me my
+we our you your he she it its they them their this that these those there here what which who whom when where why how
+not no yes do does did done have has had will would can could should shall may might must just also very really then
+than too about into over under up down out off again more most some any all each few other such only own same both
+because while during before after above below between through until against once lot get got make made like know""".split())
+
+
+def word_breakdown(text: str, top: int = 5) -> dict:
+    """Which fillers and hedges the speaker uses (word -> count), and crutch words: content words repeated far more
+    than usual (>= 4 times and >= 2.5 % of all words)."""
+    from collections import Counter
+
+    ws = words(text)
+    fillers = Counter(_FILLER_FORM.get(w, w) for w in filler_tokens(ws))
+    if (k := count_phrases(text, ["you know"])):
+        fillers["you know"] = k
+    hedges = Counter({h: n for h in HEDGES if (n := count_phrases(text, [h]))})
+    n = max(len(ws), 1)
+    hedge_words = {w for h in HEDGES for w in h.split()}
+    crutch = Counter(w for w in ws if w not in STOP_WORDS and w not in FILLERS and w not in hedge_words and len(w) > 2)
+    return {"fillers": dict(fillers.most_common()), "hedges": dict(hedges.most_common(top)),
+            "crutch_words": {w: c for w, c in crutch.most_common(top) if c >= 4 and c / n >= 0.025}}
 
 
 def repetition_count(ws: list[str]) -> int:

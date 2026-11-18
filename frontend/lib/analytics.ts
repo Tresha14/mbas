@@ -45,7 +45,10 @@ export interface AnswerMsg {
   ask_s: number;
   end_s: number;
   transcript: string;
-  behaviour: { speaking_pattern: string | null; hesitation_index: number | null; response_latency_s: number; wpm: number | null; fillers: number; long_pauses: number };
+  behaviour: {
+    speaking_pattern: string | null; hesitation_index: number | null; response_latency_s: number; wpm: number | null; fillers: number;
+    long_pauses: number; longest_pause_s?: number | null; voice_breaks?: number | null; jitter_pct?: number | null;
+  };
   answer_model: { relevance: number; quality: number; completeness: number; star_count: number } | null;
   fusion: {
     effectiveness: number;

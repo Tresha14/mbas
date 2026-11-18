@@ -26,4 +26,5 @@ Bugs found and fixed during the test:
 
 Known limits seen in the run: engagement read 0% because the window engagement MLP is trained on synthetic features
 (domain gap until our sessions are labelled); WPM / transcript need the ASR (training queued).
-Still to do with people: a two-laptop run over the LAN with real cameras and a 3+ person meeting.
+Still to do with people: a two-laptop run over the LAN with real cameras and a 3+ person meeting, and one interview
+each over Google Meet, Zoom (browser and desktop app) and Teams using *External call* in the cockpit.

@@ -9,8 +9,8 @@ import torch
 
 from ml.behaviour.conversation import analyse, turns_from_segments
 from ml.behaviour.pauses import answer_pauses, question_end, segments
-from ml.behaviour.prosody import prosody
-from ml.behaviour.text_hesitation import text_hesitation
+from ml.behaviour.prosody import pitch_jitter_pct, prosody, voice_breaks
+from ml.behaviour.text_hesitation import text_hesitation, word_breakdown
 from ml.vision.face_detector.model import FaceDetector, decode, detection_loss, encode, make_anchors, match, postprocess
 from ml.vision.gaze_iris.model import GazeIrisNet, angular_error_deg
 from ml.vision.gaze_iris.signals import ScreenCalibration, reading_pattern, window_signals
@@ -89,6 +89,8 @@ def test_pause_model():
     p = answer_pauses(segs, qe, 9.5)
     assert p["response_latency_s"] == pytest.approx(0.6) and p["long_pause_count"] == 1
     assert p["long_pause_total_s"] == pytest.approx(1.5) and p["pause_ratio"] == pytest.approx(1 - 5.5 / 7.0, abs=1e-3)
+    assert p["longest_pause_s"] == pytest.approx(1.5) and p["longest_pause_at_s"] == pytest.approx(4.0)
+    assert p["very_long_pause_count"] == 0
 
 
 def test_prosody_monotone_vs_varied():
@@ -97,6 +99,28 @@ def test_prosody_monotone_vs_varied():
     varied = (0.3 * np.sin(2 * np.pi * (150 * t + 40 * np.sin(2 * np.pi * 0.7 * t) / (2 * np.pi * 0.7)))).astype(np.float32)
     assert prosody(flat, 20)["monotony_index"] > prosody(varied, 20)["monotony_index"]
     assert prosody(flat, 20)["speaking_rate_wpm"] == pytest.approx(400, rel=0.01)
+
+
+def test_voice_breaks_and_jitter():
+    """A steady tone has no breaks; a jump from 150 to 240 Hz (8 semitones) is one break at 2 s; octave jumps
+    (pitch-tracker errors) are ignored; a frame-to-frame wobbly pitch has more jitter than a smooth glide."""
+    f0 = np.full(400, 150.0)
+    assert voice_breaks(f0)[0] == 0
+    f0[200:] = 240.0
+    n, ts = voice_breaks(f0)
+    assert n == 1 and ts[0] == pytest.approx(2.0, abs=0.05)
+    f0[200:] = 300.0                                             # exactly one octave
+    assert voice_breaks(f0)[0] == 0
+    glide = np.linspace(120, 200, 300)
+    wobble = glide * (1 + 0.03 * (-1) ** np.arange(300))
+    assert pitch_jitter_pct(wobble) > 5 * pitch_jitter_pct(glide)
+
+
+def test_word_breakdown():
+    t = "um so basically I think the parser um was, like, the parser. hmm you know the parser and the parser worked"
+    b = word_breakdown(t)
+    assert b["fillers"]["um"] == 2 and b["fillers"]["hmm"] == 1 and b["fillers"]["you know"] == 1
+    assert b["hedges"] == {"i think": 1} and b["crutch_words"] == {"parser": 4}
 
 
 def test_conversation_hand_checked_session():

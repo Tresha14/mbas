@@ -1,7 +1,9 @@
 """Post-interview reports from stored model outputs (templates only, no LLM).
 
-interviewer_view: per-question cards (transcript, scores, top-3 reasons), sub-score radar, attention / engagement
-                  timeline, follow-up list, conversation summary, models used.
+interviewer_view: per-question cards (transcript, scores, top-3 reasons, pauses, voice, word breakdown, eyes),
+                  sub-score radar, attention / engagement timeline, follow-up list, and from report_metrics.py:
+                  detailed behaviour sections (eyes, voice, fluency, pauses), the rated scorecard (overall + grade),
+                  the confidence-vs-content matrix, the pressure response and the key moments.
 candidate_view:   strengths, 3 improvement areas with timestamps and concrete tips, closing note. The interviewer
                   reviews / edits it and releases it; the candidate never sees raw attention or engagement numbers.
 """
@@ -11,6 +13,9 @@ import math
 from collections import defaultdict
 
 import numpy as np
+
+from backend.report_metrics import (behaviour_sections, card_details, confidence_matrix, key_moments,
+                                    pressure_response, scorecard)
 
 SUB = ("clarity", "confidence", "engagement", "relevance", "fluency")
 TIPS = {
@@ -29,6 +34,8 @@ TIPS = {
     "pace": "Aim for about 120-150 words per minute: slow down on key facts and numbers.",
     "monotone": "Stress one key word per sentence and vary your pitch when you move to a new point.",
     "detail": "Give one concrete example with numbers (users, time saved, accuracy) for every claim.",
+    "voice": "A shaky or cracking voice usually comes from shallow breathing or a dry throat: breathe out slowly "
+             "before you answer, keep water nearby and speak at a comfortable, slightly lower pitch.",
 }
 
 
@@ -47,6 +54,7 @@ def build_reports(data: dict) -> tuple[dict, dict]:
     for f in data["follow_ups"]:
         fus[f["question_ref"]].append(f)
 
+    windows = sorted(data["windows"], key=lambda w: w["start_s"])
     cards = []
     for a in answers:
         q = qs.get(a["question_ref"], {})
@@ -64,10 +72,14 @@ def build_reports(data: dict) -> tuple[dict, dict]:
             "fillers": (beh.get("text_hesitation") or {}).get("filler_count"),
             "follow_ups": [{"reason": f["reason"], "text": f["text"], "source": f["source"]} for f in fus[a["question_ref"]]],
         })
+        cards[-1].update(card_details(cards[-1], a, windows))
     radar = {k: _f(np.nanmean([c["subscores"].get(k, np.nan) for c in cards])) if cards else None for k in SUB}
     eff = [c["effectiveness"] for c in cards if c["effectiveness"] is not None]
-    windows = sorted(data["windows"], key=lambda w: w["start_s"])
     timeline = [{"t_s": w["end_s"], "attention": _f(w.get("attention")), "engagement": w.get("engagement")} for w in windows]
+    cand_text = " ".join(s["text"] for s in sorted(data.get("transcript", []), key=lambda s: s["start_s"])
+                         if s.get("speaker") == "candidate") or " ".join(c["transcript"] or "" for c in cards)
+    sections, raw = behaviour_sections(cards, windows, cand_text)
+    difficulty = question_difficulty(data["questions"])
     eng = [w.get("engagement") for w in windows if w.get("engagement")]
     interviewer = {
         "summary": {"questions": len(cards), "mean_effectiveness": _f(np.mean(eff)) if eff else None,
@@ -76,10 +88,21 @@ def build_reports(data: dict) -> tuple[dict, dict]:
                     "engaged_share": round(eng.count("engaged") / len(eng), 3) if eng else None,
                     "follow_ups": len(data["follow_ups"])},
         "radar": radar, "cards": cards, "timeline": timeline,
+        "scorecard": scorecard(cards, raw), "behaviour": sections, "matrix": confidence_matrix(cards),
+        "pressure": pressure_response(cards, difficulty), "moments": key_moments(cards, windows, raw),
         "follow_ups": [{**f, "time": _mmss(f["t_s"])} for f in sorted(data["follow_ups"], key=lambda f: f["t_s"])],
         "note": "Scores are decision support for the interviewer, never an automatic decision.",
     }
     return interviewer, candidate_feedback(cards, windows)
+
+
+def question_difficulty(questions: list[dict]) -> dict[int, float]:
+    """questions.id -> difficulty (0-1) from the question bank, for the questions that are in it."""
+    from backend.features import question_bank
+
+    bank = question_bank()
+    return {q["id"]: float(bank[q["question_id"]]["difficulty"]) for q in questions
+            if q.get("question_id") in bank and bank[q["question_id"]].get("difficulty")}
 
 
 def candidate_feedback(cards: list[dict], windows: list[dict]) -> dict:
@@ -105,10 +128,28 @@ def candidate_feedback(cards: list[dict], windows: list[dict]) -> dict:
         rate, c = max(fil, key=lambda t: t[0])
         avg = np.mean([r for r, _ in fil])
         if avg > 4:
+            from collections import Counter
+
+            used = Counter()
+            for x in cards:
+                used.update((x.get("words") or {}).get("fillers") or {})
+            top = f" Your most frequent was “{used.most_common(1)[0][0]}”." if used else ""
             issues.append((avg / 4, "fillers", f"About {avg:.0f} filler words per 100 words (most in the answer at "
-                                               f"{_mmss(c['ask_s'] or 0)}).", c))
+                                               f"{_mmss(c['ask_s'] or 0)}).{top}", c))
     elif cards:
         strengths.append("Your answers had very few filler words.")
+    lp = [c for c in cards if (c.get("longest_pause_s") or 0) > 3 or (c.get("very_long_pauses") or 0) > 0]
+    if lp:
+        c = max(lp, key=lambda c: c.get("longest_pause_s") or 0)
+        issues.append((1.1 + 0.1 * len(lp), "long_pauses", f"You stopped for {c['longest_pause_s']:.0f} s in the middle of "
+                                                        f"the answer at {_mmss(c['ask_s'] or 0)}.", c))
+    br = [c for c in cards if (c.get("voice_break_rate") or 0) > 15 or (c.get("pitch_jitter_pct") or 0) > 2.5]
+    if br:
+        c = br[0]
+        issues.append((0.85, "voice", f"Your voice sounded strained or broke a few times, first in the answer at "
+                                      f"{_mmss(c['ask_s'] or 0)}.", c))
+    elif cards and any(c.get("voice_breaks") is not None for c in cards):
+        strengths.append("Your voice stayed steady and calm throughout.")
     for c in cards:
         if c.get("speaking_pattern") == "monotone":
             issues.append((0.8, "monotone", f"Your voice sounded flat in the answer at {_mmss(c['ask_s'] or 0)}.", c))

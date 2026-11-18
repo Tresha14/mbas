@@ -52,10 +52,13 @@ def test_auth_roles_and_candidate_join(env):
     assert c.post(f"/api/interviews/{iv['id']}/events", json={"type": "ask", "question_id": "Q01"}, headers=ch).status_code == 403
     tok = c.post(f"/api/interviews/{iv['id']}/livekit-token", headers=ch).json()
     assert tok["identity"].startswith("candidate-")
-    # Google Meet capture: only the host gets a token, and it joins as the candidate so the bot analyses it
+    # external call capture (Meet / Zoom / Teams): only the host gets a token, and it joins as the candidate so the
+    # bot analyses it
     assert c.post(f"/api/interviews/{iv['id']}/capture-token", headers=ch).status_code == 403
     cap = c.post(f"/api/interviews/{iv['id']}/capture-token", headers=h).json()
-    assert cap["identity"] == f"meet-capture-{iv['id']}"
+    assert cap["identity"] == f"call-capture-{iv['id']}"
+    assert c.post(f"/api/interviews/{iv['id']}/capture-token?platform=zoom", headers=h).status_code == 200
+    assert c.post(f"/api/interviews/{iv['id']}/capture-token?platform=skype", headers=h).status_code == 422
     assert json.loads(jwt.decode(cap["token"], options={"verify_signature": False})["metadata"])["role"] == "candidate"
     other = _host(c, "other@x.com")
     assert c.get(f"/api/interviews/{iv['id']}", headers=other).status_code == 403
@@ -162,3 +165,45 @@ def test_candidate_feedback_rules():
     text = " ".join(i["observation"] for i in fb["improvements"])
     assert "4.5 s on behavioural" in text and "01:05" in text
     assert any("Why us" in s for s in fb["strengths"])
+
+
+def test_report_metrics_scorecard_matrix_pressure_moments():
+    """Six answers getting worse as the questions get harder: grade, statuses, the confidence matrix, the pressure
+    response and key moments all follow from the stored behaviour JSON and window scores."""
+    from backend.report_metrics import (behaviour_sections, card_details, confidence_matrix, key_moments,
+                                        pressure_response, scorecard)
+
+    cards, windows = [], []
+    for i in range(6):
+        ask = i * 60.0
+        for s in np.arange(ask, ask + 50, 2.5):
+            windows.append({"start_s": float(s), "end_s": float(s + 5), "attention": 85.0 - 10 * i, "on_screen_ratio": 0.9 - 0.08 * i,
+                            "features": {"blink_rate_per_min": 15 + 5 * i, "glance_away_count": 0.2 * i,
+                                         "reading_pattern_flag": int(i == 5 and s == ask)}})
+        ans = {"behaviour": {"timing": {"response_latency_s": 1.0 + i, "long_pause_count": i, "longest_pause_s": 1.0 + i,
+                                        "longest_pause_at_s": ask + 20, "very_long_pause_count": int(i >= 4),
+                                        "pause_ratio": 0.2, "answer_duration_s": 45},
+                             "prosody": {"voice_break_count": i, "voice_break_times_s": [ask + 10 + k for k in range(i)],
+                                         "voice_break_rate_per_min": 3.0 * i, "pitch_jitter_pct": 1.2 + 0.3 * i,
+                                         "monotony_index": 0.4, "volume_consistency": 0.7},
+                             "text_hesitation": {"word_count": 100, "hedge_count": 1}, "audio_hesitation": {}}}
+        c = {"question_ref": i + 1, "question": f"Q{i}", "ask_s": ask, "end_s": ask + 50, "effectiveness": 85.0 - 12 * i,
+             "subscores": {"relevance": 85 - 13 * i, "confidence": 80 - 4 * i if i < 3 else 30}, "answer_model": {},
+             "response_latency_s": 1.0 + i, "hesitation_index": 30 + 8 * i, "wpm": 140, "filler_rate": 1 + i,
+             "transcript": "um " * i + "the api handles requests " * 5}
+        c.update(card_details(c, ans, windows))
+        cards.append(c)
+    sections, raw = behaviour_sections(cards, windows, " ".join(c["transcript"] for c in cards))
+    rows = {r["key"]: r for s in sections for r in s["rows"]}
+    assert rows["voice_breaks"]["value"] == 15 and rows["voice_breaks"]["at"] == "01:10"
+    assert rows["longest_pause"]["value"] == 6.0 and rows["longest_pause"]["status"] == "concern"
+    assert rows["fillers"]["extra"]["breakdown"] == {"um": 15} and rows["reading"]["value"] == 2.5
+    sc = scorecard(cards, raw)
+    assert sc["grade"] in "ABCDE" and 0 <= sc["overall"] <= 100 and set(sc["dimensions"]) == {
+        "content", "fluency", "composure", "delivery", "eye_contact", "responsiveness"}
+    m = confidence_matrix(cards)
+    assert m["counts"]["confident_on_point"] >= 2 and m["counts"]["struggled"] >= 1 and cards[0]["quadrant"]
+    pr = pressure_response(cards, {c["question_ref"]: 0.2 + 0.1 * i for i, c in enumerate(cards)})
+    assert pr["harder_n"] == 3 and "response delay +3" in pr["summary"]
+    kinds = [m["kind"] for m in key_moments(cards, windows, raw)]
+    assert {"best", "weakest", "delay", "silence", "voice", "attention", "reading"} <= set(kinds)

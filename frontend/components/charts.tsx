@@ -149,3 +149,75 @@ export function Meter({ label, value, max = 1 }: { label: string; value: number;
     </div>
   );
 }
+
+export const quadrantTone: Record<string, string> = {
+  confident_on_point: "var(--good)", unsure_but_right: "var(--accent)", sure_but_off: "var(--warn)", struggled: "var(--bad)",
+};
+
+/** Answers placed on content quality (x) vs vocal confidence (y), with the four quadrants labelled. */
+export function ConfidenceMatrix({ points, cut = 55, onPick }: {
+  points: { question_ref: number; order: number; question: string; content: number; confidence: number; quadrant: string; label: string }[];
+  cut?: number;
+  onPick?: (ref: number) => void;
+}) {
+  return (
+    <div className="h-72 w-full">
+      <ResponsiveContainer>
+        <ScatterChart margin={{ top: 12, right: 12, bottom: 18, left: -12 }}>
+          <XAxis type="number" dataKey="content" domain={[0, 100]} ticks={[0, 50, 100]} tick={{ fontSize: 10, fill: "var(--faint)" }}
+            axisLine={false} tickLine={false} label={{ value: "content →", position: "insideBottomRight", offset: -8, fontSize: 11, fill: "var(--muted)" }} />
+          <YAxis type="number" dataKey="confidence" domain={[0, 100]} ticks={[0, 50, 100]} tick={{ fontSize: 10, fill: "var(--faint)" }}
+            axisLine={false} tickLine={false} label={{ value: "confidence →", angle: -90, position: "insideLeft", offset: 22, fontSize: 11, fill: "var(--muted)" }} />
+          <ZAxis range={[90, 90]} />
+          <ReferenceArea x1={cut} x2={100} y1={cut} y2={100} fill="var(--good)" fillOpacity={0.05} />
+          <ReferenceArea x1={0} x2={cut} y1={cut} y2={100} fill="var(--warn)" fillOpacity={0.06} />
+          <ReferenceLine x={cut} stroke="var(--border)" />
+          <ReferenceLine y={cut} stroke="var(--border)" />
+          <Tooltip cursor={false} content={({ payload }) => {
+            const p = payload?.[0]?.payload as (typeof points)[number] | undefined;
+            return p ? (
+              <div className="max-w-64 rounded-2xl border border-border bg-surface px-3 py-2 text-xs shadow-[var(--shadow)]">
+                <p className="font-medium">Q{p.order}: {p.question}</p>
+                <p className="mt-1 text-muted">{p.label} · content {p.content} · confidence {p.confidence}</p>
+              </div>) : null;
+          }} />
+          <Scatter data={points} isAnimationActive={false} onClick={(d) => onPick?.((d as unknown as { question_ref: number }).question_ref)}
+            shape={(props: unknown) => {
+              const { cx, cy, payload } = props as { cx: number; cy: number; payload: (typeof points)[number] };
+              return (
+                <g className="cursor-pointer">
+                  <circle cx={cx} cy={cy} r={11} fill={quadrantTone[payload.quadrant]} fillOpacity={0.18} stroke={quadrantTone[payload.quadrant]} />
+                  <text x={cx} y={cy + 3.5} textAnchor="middle" fontSize={10} fill="var(--fg)">{payload.order}</text>
+                </g>);
+            }} />
+        </ScatterChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/** Two thin lines over the interview: blink rate (per minute) and eye contact (%). */
+export function EyeTrend({ data, onPick, cursor }: {
+  data: { t_s: number; blink: number | null; on_screen: number | null }[];
+  onPick?: (t: number) => void;
+  cursor?: number;
+}) {
+  return (
+    <div className="h-40 w-full">
+      <ResponsiveContainer>
+        <LineChart data={data} margin={{ top: 8, right: 6, bottom: 0, left: -28 }}
+          onClick={(e) => { const t = (e as { activeLabel?: number })?.activeLabel; if (onPick && typeof t === "number") onPick(t); }}>
+          <CartesianGrid vertical={false} stroke="var(--border)" />
+          <XAxis dataKey="t_s" type="number" domain={["dataMin", "dataMax"]} tickFormatter={(v) => mmss(v)} tick={{ fontSize: 10, fill: "var(--faint)" }} axisLine={false} tickLine={false} />
+          <YAxis domain={[0, 100]} ticks={[0, 50, 100]} tick={{ fontSize: 10, fill: "var(--faint)" }} axisLine={false} tickLine={false} />
+          <Tooltip labelFormatter={(v) => mmss(Number(v))}
+            contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, fontSize: 12, boxShadow: "var(--shadow)" }} />
+          <ReferenceArea y1={8} y2={30} fill="var(--good)" fillOpacity={0.05} />
+          <Line type="monotone" dataKey="blink" name="blinks / min" stroke="var(--warn)" strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls />
+          <Line type="monotone" dataKey="on_screen" name="eye contact %" stroke="var(--accent)" strokeWidth={1.5} dot={false} isAnimationActive={false} connectNulls />
+          {cursor != null && <ReferenceLine x={cursor} stroke="var(--fg)" strokeOpacity={0.5} />}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}

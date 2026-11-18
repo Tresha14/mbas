@@ -224,10 +224,21 @@ second laptop: `https://<LAN_IP>:8444/join/...` after setting `MBAS_LAN_IP` and 
 | --- | --- | --- |
 | `/dashboard` | interviewer / meeting host | create + schedule interviews or meetings, copy the candidate link |
 | `/join/<invite>` -> `/room/<id>` | candidate | consent, camera/mic check, video call, screen share, timer; **no analytics** |
-| `/cockpit/<id>` | interviewer | video + shared screen, live transcript (fillers highlighted), attention / engagement / hesitation / confidence gauges, iris-gaze plot, alerts, speaking chips, timeline with follow-up markers, question checklist, notes, per-answer scores + reasons |
+| `/cockpit/<id>` | interviewer | video + shared screen, live transcript (fillers highlighted), attention / engagement / hesitation / confidence gauges, iris-gaze plot, alerts, speaking chips, timeline with follow-up markers, question checklist, notes, per-answer scores + reasons + a live confidence-vs-content nudge ("sounds sure, but off target: probe") |
 | `/meeting/<id>` | meeting host | participant grid, talk-time bars, per-person engagement |
-| `/report/<id>` | interviewer | radar, replay synced with the transcript, per-question cards, follow-ups, PDF export, candidate-feedback editor + release |
+| `/report/<id>` | interviewer | final rating + grade (A-E) from six dimensions; behaviour details (blink rate, eye contact, glances, gaze steadiness, saccades, iris movement, reading pattern; pace, expressiveness, voice breaks, jitter; filler words with a per-word breakdown, overused words, hedges, repeats, stretched sounds; response delay, long / very long pauses, longest silence) each with a typical range and status; confidence-vs-content matrix; "under pressure" comparison of easier vs harder questions; moments to rewatch; radar, replay synced with the transcript, per-question cards, follow-ups, PDF export of every tab, candidate-feedback editor + release |
 | `/feedback/<token>` | candidate | released strengths + 3 improvements with timestamps and tips |
+
+**Interviews held on Google Meet, Zoom or Teams.** In the cockpit, *External call* captures the call from the
+interviewer's computer and publishes it into the MBAS room as the candidate, so the hidden bot and every model run as
+usual and the candidate installs nothing. Meet, Zoom in the browser and Teams in the browser: pick the call's tab and
+keep "Also share tab audio". Zoom desktop app: pick "Entire screen" and tick "Also share system audio" (every sound
+on the computer is then analysed, so mute other apps). Pin the candidate / use speaker view: the vision models follow
+the largest face. Call apps never play your own microphone back, so the captured audio is the candidate's side only.
+
+Report rules and thresholds (all transparent, no learned weights) are in `backend/report_metrics.py`; voice breaks and
+jitter are in `ml/behaviour/prosody.py` (thresholds tuned on LibriSpeech so normal read speech gives median 0 breaks
+per minute).
 
 Candidate tokens are rejected by the analytics WebSocket on the server (tested in `tests/test_backend.py`); `/metrics`
 shows per-model and end-to-end latency. Stage 10 documents: `docs/model_report.md`, `docs/bias_check.md`,

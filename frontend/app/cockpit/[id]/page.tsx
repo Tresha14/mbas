@@ -8,10 +8,10 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GazePlot, Signal, TrendChart } from "@/components/charts";
 import { Header, VideoSlot } from "@/components/shell";
-import { Badge, Button, Card, cn, Disclosure, Dot, Empty, mmss, scoreTone, SectionLabel, Segmented, Tabs, Textarea } from "@/components/ui";
-import { useAnalytics, type Line } from "@/lib/analytics";
+import { Badge, Button, Card, cn, Disclosure, Dot, Empty, mmss, scoreTone, SectionLabel, Segmented, Sheet, Tabs, Textarea } from "@/components/ui";
+import { useAnalytics, type AnswerMsg, type Line } from "@/lib/analytics";
 import { api, type Interview, type Question } from "@/lib/api";
-import { CAPTURE_PREFIX, captureMeetTab, joinRoom, roleOf, type MeetCapture } from "@/lib/room";
+import { CALL_SOURCES, CAPTURE_PREFIX, captureCall, joinRoom, roleOf, type CallCapture, type CallSource } from "@/lib/room";
 
 function TranscriptLine({ l, active }: { l: Line; active: boolean }) {
   const words = l.words?.length ? l.words.map((w) => w.word) : l.text.split(" ");
@@ -26,6 +26,17 @@ function TranscriptLine({ l, active }: { l: Line; active: boolean }) {
       </p>
     </div>
   );
+}
+
+/** Live confidence-vs-content check (same rule as the report's matrix, backend/report_metrics.py). */
+function quadrant(a: AnswerMsg): { label: string; hint: string; tone: "good" | "warn" | "accent" | "bad" } | null {
+  const content = a.fusion?.subscores.relevance ?? (a.answer_model ? a.answer_model.relevance * 100 : null);
+  const conf = a.fusion?.subscores.confidence ?? (a.behaviour.hesitation_index != null ? 100 - a.behaviour.hesitation_index : null);
+  if (content == null || conf == null) return null;
+  if (content >= 55 && conf >= 55) return { label: "Confident and on point", hint: "", tone: "good" };
+  if (content >= 55) return { label: "Knows it, sounds unsure", hint: "Reassure, then ask them to go one level deeper.", tone: "accent" };
+  if (conf >= 55) return { label: "Sounds sure, but off target", hint: "Probe: ask for a concrete example or the exact steps.", tone: "warn" };
+  return { label: "Struggled", hint: "Rephrase the question or move on and come back later.", tone: "bad" };
 }
 
 export default function Cockpit() {
@@ -43,7 +54,8 @@ export default function Cockpit() {
   const [jump, setJump] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const room = useRef<Room | null>(null);
-  const [capture, setCapture] = useState<MeetCapture | null>(null);
+  const [capture, setCapture] = useState<CallCapture | null>(null);
+  const [callPicker, setCallPicker] = useState(false);
   const [captureMsg, setCaptureMsg] = useState("");
   const { state, error } = useAnalytics(iv?.id ?? null);
 
@@ -55,7 +67,7 @@ export default function Cockpit() {
         if (roleOf(p) !== "candidate") return;
         if (kind === "camera") setCam(el);
         if (kind === "screen") setScreen(el);
-        // a captured Meet tab is already playing in its own tab: playing it here too would echo
+        // a captured call is already playing in its own tab / app: playing it here too would echo
         if (kind === "audio" && el && !p.identity.startsWith(CAPTURE_PREFIX)) document.body.appendChild(el);
       },
     }).then((r) => (room.current = r)).catch(() => undefined);
@@ -97,15 +109,18 @@ export default function Cockpit() {
     if (iv.status === "live") capture?.stop();
     setIv(iv.status === "live" ? await api.stop(iv.id) : await api.start(iv.id));
   }
-  async function toggleMeet() {
+  async function startCall(source: CallSource) {
     if (!iv) return;
-    if (capture) return capture.stop();
+    setCallPicker(false);
+    capture?.stop();
     try {
-      const c = await captureMeetTab(iv.id, () => { setCapture(null); setCaptureMsg(""); });
+      const c = await captureCall(iv.id, source, () => { setCapture(null); setCaptureMsg(""); });
       setCapture(c);
-      setCaptureMsg(c.hasAudio ? "" : "No audio: share again and tick “Also share tab audio”.");
+      setCaptureMsg(c.hasAudio ? "" : source === "zoom_app"
+        ? "No audio: share again, pick “Entire screen” and tick “Also share system audio”."
+        : "No audio: share again and tick “Also share tab audio”.");
     } catch (e) {
-      setCaptureMsg(e instanceof Error && e.name === "NotAllowedError" ? "" : `Couldn't capture the tab: ${e}`);
+      setCaptureMsg(e instanceof Error && e.name === "NotAllowedError" ? "" : `Couldn't capture the call: ${e}`);
     }
   }
   useEffect(() => () => capture?.stop(), [capture]);
@@ -121,9 +136,9 @@ export default function Cockpit() {
           {iv?.status === "live" && <span className="flex items-center gap-2 text-[13px] tabular-nums text-muted"><Dot tone="bad" pulse /> {mmss(elapsed)}</span>}
           {state.models && !state.connected && <Badge tone="warn">reconnecting</Badge>}
           {iv && iv.status !== "ended" && (
-            <Button size="sm" variant={capture ? "danger" : "outline"} onClick={toggleMeet}
-              title="Run the interview on Google Meet: pick the Meet tab and tick “Also share tab audio”">
-              <Video size={14} /> {capture ? "Stop Meet capture" : "Use Google Meet"}
+            <Button size="sm" variant={capture ? "danger" : "outline"} onClick={() => (capture ? capture.stop() : setCallPicker(true))}
+              title="Run the interview on Google Meet, Zoom or Teams and analyse it here">
+              <Video size={14} /> {capture ? `Stop ${CALL_SOURCES[capture.source].label.split(" (")[0]} capture` : "External call"}
             </Button>)}
           {iv?.status === "ended"
             ? <Link href={`/report/${id}`}><Button size="sm"><FileText size={14} /> View report</Button></Link>
@@ -131,6 +146,25 @@ export default function Cockpit() {
                 {iv?.status === "live" ? <><Square size={13} /> End interview</> : <><Play size={13} /> Start analysis</>}
               </Button>}
         </div>} />
+      <Sheet open={callPicker} onClose={() => setCallPicker(false)} title="Analyse a call held elsewhere">
+        <p className="text-[13px] text-muted">
+          Hold the interview on another app as usual. MBAS captures the call from this computer and analyses the candidate
+          exactly like in its own room; the candidate does not need to install or join anything.
+        </p>
+        <div className="mt-5 space-y-3">
+          {(Object.keys(CALL_SOURCES) as CallSource[]).map((k) => (
+            <button key={k} onClick={() => startCall(k)}
+              className="w-full rounded-2xl border border-border p-4 text-left transition hover:border-accent hover:bg-accent-soft/40">
+              <p className="font-medium">{CALL_SOURCES[k].label}</p>
+              <p className="mt-1 text-[13px] text-muted">{CALL_SOURCES[k].steps}</p>
+            </button>
+          ))}
+        </div>
+        <p className="mt-5 text-xs text-faint">
+          Tip: pin the candidate or use speaker view. The vision models follow the largest face on screen, and the audio
+          of the call carries only the other side, so your own voice is not analysed as the candidate.
+        </p>
+      </Sheet>
       <main className="mx-auto grid max-w-[1440px] gap-6 px-6 py-6 xl:grid-cols-[1fr_400px]">
         <section className="min-w-0 space-y-6">
           <div className="flex items-baseline justify-between">
@@ -260,8 +294,15 @@ export default function Cockpit() {
                         </ul>
                         <p className="mt-3 text-xs text-faint">
                           {a.behaviour.speaking_pattern ?? ""} · {a.behaviour.response_latency_s?.toFixed(1)} s to start · {a.behaviour.fillers} fillers
+                          {a.behaviour.longest_pause_s ? ` · longest pause ${a.behaviour.longest_pause_s.toFixed(1)} s` : ""}
+                          {a.behaviour.voice_breaks ? ` · ${a.behaviour.voice_breaks} voice break${a.behaviour.voice_breaks > 1 ? "s" : ""}` : ""}
                           {a.answer_model ? ` · relevance ${a.answer_model.relevance.toFixed(2)}` : ""}
                         </p>
+                        {(() => {
+                          const q = quadrant(a);
+                          return q && (
+                            <p className="mt-3 text-[13px]"><Badge tone={q.tone}>{q.label}</Badge>{q.hint && <span className="ml-2 text-muted">{q.hint}</span>}</p>);
+                        })()}
                         {fu.map((f, i) => (
                           <p key={i} className="mt-3 rounded-2xl bg-warn/10 px-4 py-2.5 text-[13px] text-warn">Consider a follow-up: {f.text}</p>
                         ))}

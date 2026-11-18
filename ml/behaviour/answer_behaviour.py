@@ -44,6 +44,8 @@ def answer_behaviour(answer_id: str, audio: np.ndarray, transcript: str, cand_se
     a0 = int(max((pz["answer_start_s"] or q_end_s) - clip_t0_s, 0) * 16000)
     a1 = int(max(answer_end_s - clip_t0_s, 0) * 16000)
     pr = prosody(audio[a0:a1] if a1 > a0 + 1600 else audio, th["word_count"], pz["speech_s"] or None)
+    off = clip_t0_s + (a0 / 16000 if a1 > a0 + 1600 else 0.0)
+    pr["voice_break_times_s"] = [round(off + t, 2) for t in pr["voice_break_times_s"]]   # session time
     ev = {"prolongation_count": 0, "block_count": 0, **(audio_events or {})}
     feats = {**pz, **pr, **th, **ev}
     out = {"schema_version": SCHEMA_VERSION, "answer_id": answer_id, "timing": pz, "prosody": pr,

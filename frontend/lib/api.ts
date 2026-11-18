@@ -96,7 +96,8 @@ export const api = {
   event: (id: number, type: "ask" | "answer_end", q: { question_id: string; text?: string; category?: string }) =>
     req<{ question_ref: number; ask_s: number; end_s: number | null }>("POST", `/api/interviews/${id}/events`,
       { type, question_id: q.question_id, text: q.text ?? "", category: q.category ?? "" }),
-  captureToken: (id: number) => req<{ token: string; url: string; identity: string }>("POST", `/api/interviews/${id}/capture-token`),
+  captureToken: (id: number, platform: "meet" | "zoom" | "teams" = "meet") =>
+    req<{ token: string; url: string; identity: string }>("POST", `/api/interviews/${id}/capture-token?platform=${platform}`),
   notes: (id: number, notes: string) => req("PUT", `/api/interviews/${id}/notes`, { notes }),
   data: (id: number) => req<InterviewData>("GET", `/api/interviews/${id}/data`),
   buildReport: (id: number) => req<ReportRow>("POST", `/api/interviews/${id}/report`),
@@ -140,6 +141,77 @@ export interface Card {
   wpm: number | null;
   fillers: number | null;
   follow_ups: { reason: string; text: string; source: string }[];
+  long_pauses?: number | null;
+  longest_pause_s?: number | null;
+  longest_pause_at_s?: number | null;
+  very_long_pauses?: number | null;
+  voice_breaks?: number | null;
+  voice_break_times_s?: number[];
+  pitch_jitter_pct?: number | null;
+  filler_rate?: number | null;
+  words?: WordBreakdown;
+  eyes?: { blink_rate: number | null; on_screen_pct: number | null; reading: boolean };
+  quadrant?: string;
+}
+
+export interface WordBreakdown {
+  fillers: Record<string, number>;
+  hedges: Record<string, number>;
+  crutch_words: Record<string, number>;
+}
+
+export type Status = "good" | "watch" | "concern" | "neutral";
+
+export interface MetricRow {
+  key: string;
+  label: string;
+  value: number | null;
+  unit: string;
+  typical: string;
+  status: Status;
+  note: string;
+  at_s?: number | null;
+  at?: string | null;
+  extra?: { breakdown?: Record<string, number>; words?: Record<string, number>; times?: string[]; min?: number | null; max?: number | null };
+}
+
+export interface BehaviourSection {
+  key: string;
+  title: string;
+  rows: MetricRow[];
+  series?: { t_s: number; blink: number | null; on_screen: number | null }[];
+}
+
+export interface Scorecard {
+  dimensions: Record<string, { score: number | null; weight: number; basis: string }>;
+  overall: number | null;
+  grade: string | null;
+  grade_word: string | null;
+  strongest: string | null;
+  weakest: string | null;
+  method: string;
+}
+
+export interface Matrix {
+  points: { question_ref: number; order: number; question: string; content: number; confidence: number; quadrant: string; label: string }[];
+  counts: Record<string, number>;
+  note: string | null;
+  cut: number;
+}
+
+export interface Pressure {
+  rows: { key: string; label: string; unit: string; easier: number; harder: number; change: number; worse: boolean }[];
+  summary: string;
+  easier_n: number;
+  harder_n: number;
+}
+
+export interface Moment {
+  t_s: number;
+  time: string;
+  kind: string;
+  label: string;
+  detail: string;
 }
 
 export interface ReportRow {
@@ -151,6 +223,11 @@ export interface ReportRow {
     timeline: { t_s: number; attention: number | null; engagement: string | null }[];
     follow_ups: { t_s: number; time: string; reason: string; text: string; source: string }[];
     note: string;
+    scorecard?: Scorecard;
+    behaviour?: BehaviourSection[];
+    matrix?: Matrix;
+    pressure?: Pressure | null;
+    moments?: Moment[];
   };
   candidate_view: CandidateView;
   released: boolean;
