@@ -106,6 +106,15 @@ class InterviewSpeech:
         self.next_speaking, self.next_conv = 5.0, 10.0
         self.next_health = 0.0
         self.lock = threading.RLock()            # guards the tracks: the analysis thread reads them while audio arrives
+        self.candidate_name = ""
+        try:                                     # the name helps the recogniser spell it
+            from backend.db import Interview
+
+            with db.session() as s:
+                iv = s.get(Interview, interview_id)
+                self.candidate_name = (iv.candidate_name or "").strip() if iv else ""
+        except Exception:  # noqa: BLE001 - a missing row or database must not stop the worker
+            pass
         self.in_pause = False
         self.questions: dict[int, dict] = {}
         self.platform = platform or "interlens"
@@ -127,8 +136,10 @@ class InterviewSpeech:
 
                 from ml.speech.asr.whisper_streaming import FILLER_PROMPT
 
-                t.asr = WhisperStreamingASR(self.m.whisper, ChunkVAD(self.m.vad), pool=getattr(self.m, "whisper_pool", None),
+                model = self.m.whisper_for(name) if hasattr(self.m, "whisper_for") else self.m.whisper
+                t.asr = WhisperStreamingASR(model, ChunkVAD(self.m.vad), pool=getattr(self.m, "whisper_pool", None),
                                             prompt=None if settings().whisper_prompt == "off" else FILLER_PROMPT)
+                t.asr.set_context(self.asr_context(name))
             elif self.m.asr is not None:
                 from ml.speech.asr.streaming import StreamingASR
 
@@ -216,6 +227,8 @@ class InterviewSpeech:
         fill = [i for i, w in enumerate(ws) if w["word"].lower() in FILLERS]
         start = ws[0]["start_s"] if ws else r.t_s
         end = ws[-1]["end_s"] if ws else r.t_s
+        if r.final and r.text and self.is_leak(name, r.text, start, end):
+            return                                   # the same words are on the other track, louder there: this is a leak
         out = {"kind": "transcript", "speaker": name, "text": r.text, "final": r.final, "start_s": start, "end_s": end,
                "words": ws, "fillers": fill}
         self.bus.publish(f"analytics:{self.id}", out)
@@ -232,14 +245,30 @@ class InterviewSpeech:
             self.bus.set_metric("e2e_transcript", (time.time() - msg["captured_at"]) * 1000 + 640)
 
     # ------------------------------------------------------------------ questions found in the interviewer's voice
+    def asr_context(self, role: str) -> str:
+        """Words that help the recogniser: the candidate's name (both tracks) and, for the candidate, the open question."""
+        parts = []
+        if self.candidate_name and self.candidate_name.lower() not in ("candidate", "a"):
+            parts.append(f"Candidate: {self.candidate_name}.")
+        if role == "candidate" and self.open_q and self.open_q.get("text"):
+            parts.append(f"Question: {str(self.open_q['text'])[:160]}")
+        return " ".join(parts)
+
+    def refresh_asr_context(self):
+        for name, tr in self.tracks.items():
+            if tr.asr is not None and hasattr(tr.asr, "set_context"):
+                tr.asr.set_context(self.asr_context(name))
+
     def on_ask(self, ev: dict):
         """Every question that starts (by click or by voice) becomes the open one."""
-        self.open_q = {k: ev.get(k) for k in ("question_ref", "question_id", "text", "category", "ask_s")}
+        self.open_q = {k: ev.get(k) for k in ("question_ref", "question_id", "text", "category", "ask_s", "bank_text")}
+        self.refresh_asr_context()
         if not ev.get("auto"):
             self.last_click_ask_t = ev.get("ask_s") or 0.0
 
     def auto_question(self, text: str, start_s: float):
         from backend.db import Question
+        from backend.question_bank import match_bank
         from backend.question_detect import extract_question
 
         q = extract_question(text)
@@ -258,8 +287,10 @@ class InterviewSpeech:
             row = Question(interview_id=self.id, order=n + 1, question_id=f"AUTO{n + 1}", text=q[:300], category="auto", ask_s=round(start_s, 2))
             s.add(row)
             s.commit()
+            match = match_bank(row.text, str(settings().questions_path))          # a bank question? then relevance can be judged
             ev = {"type": "ask", "interview_id": self.id, "question_ref": row.id, "question_id": row.question_id, "text": row.text,
-                  "category": "auto", "ask_s": row.ask_s, "end_s": None, "t_s": row.ask_s, "auto": True}
+                  "category": "auto", "ask_s": row.ask_s, "end_s": None, "t_s": row.ask_s, "auto": True,
+                  "bank_id": match[0] if match else None, "bank_text": match[1] if match else None}
         self.on_ask(ev)
         self.bus.publish("control", ev)
         self.bus.publish(f"analytics:{self.id}", {"kind": "question", **ev})
@@ -269,6 +300,7 @@ class InterviewSpeech:
         from backend.db import Question
 
         q, self.open_q = self.open_q, None
+        self.refresh_asr_context()
         if not q or q.get("question_ref") is None:
             return
         end_s = max(float(end_s), float(q.get("ask_s") or 0.0) + 0.5)
@@ -283,6 +315,51 @@ class InterviewSpeech:
             submit_answer(self, ev)
         else:
             self.bus.publish("control", ev)
+
+    # ------------------------------------------------------------------ one voice on both tracks
+    def level_db(self, name: str, t0: float, t1: float) -> float:
+        tr = self.tracks.get(name)
+        x = tr.clip(max(0.0, t0), max(t1, t0 + 0.3)) if tr is not None else np.zeros(0, np.float32)
+        return 10 * np.log10(float((x ** 2).mean()) + 1e-10) if len(x) else -120.0
+
+    def is_leak(self, name: str, text: str, start: float, end: float) -> bool:
+        """When two people share a room (or a microphone hears the speakers) the same words are transcribed on both tracks.
+        The quieter track is the leak. True: this new line is the leak, drop it. Otherwise an already shown line of the
+        other track that turns out to be the leak is removed (and retracted on the live screen)."""
+        other = "interviewer" if name == "candidate" else "candidate"
+        tr_o = self.tracks.get(other)
+        if tr_o is None:
+            return False
+        mine = set(_leak_words(text))
+        for f in list(tr_o.finals):
+            if not (start - 4.0 <= f["start_s"] <= end + 4.0):
+                continue
+            theirs = set(_leak_words(f["text"]))
+            if min(len(mine), len(theirs)) < 3 or len(mine & theirs) / min(len(mine), len(theirs)) < 0.7:
+                continue
+            my_db, their_db = self.level_db(name, start, end), self.level_db(other, f["start_s"], f["end_s"])
+            i_am_leak = my_db < their_db - 1.0 or (abs(my_db - their_db) <= 1.0 and name == "interviewer")
+            if i_am_leak:
+                return True
+            self.retract(other, f)
+        return False
+
+    def retract(self, speaker: str, f: dict):
+        tr = self.tracks.get(speaker)
+        if tr is not None and f in tr.finals:
+            tr.finals.remove(f)
+        try:
+            from sqlalchemy import delete
+
+            with self.db.session() as s:
+                s.execute(delete(TranscriptSegment).where(TranscriptSegment.interview_id == self.id, TranscriptSegment.speaker == speaker,
+                                                          TranscriptSegment.start_s == f["start_s"], TranscriptSegment.text == f["text"]))
+                s.commit()
+        except Exception:  # noqa: BLE001 - never let storage break the live analysis
+            import traceback
+
+            traceback.print_exc()
+        self.bus.publish(f"analytics:{self.id}", {"kind": "transcript_retract", "speaker": speaker, "start_s": f["start_s"]})
 
     def publish_health(self, now_t: float):
         """Once a second: is each microphone alive, is it hearing speech, and are words coming out of it?"""
@@ -393,9 +470,13 @@ class InterviewSpeech:
         events = self.audio_events(answer_clip, q_end, end)
         beh = answer_behaviour(f"{self.id}_A{ev['question_ref']}", audio, transcript, cand_segs, q_end, end, clip_t0, events)
         ans = None
-        if transcript.strip():
+        # The answer-quality model was trained on the bank's questions: its relevance is meaningful only for a bank question
+        # (clicked from the list, or heard and matched to the bank). For a free-form question it abstains instead of
+        # inventing "topic not covered" for a correct answer.
+        in_bank = bool(ev.get("bank_text")) or str(ev.get("question_id") or "").upper().startswith("Q")
+        if transcript.strip() and in_bank:
             try:
-                ans = self.m.answer_scores(ev.get("text", ""), transcript)
+                ans = self.m.answer_scores(ev.get("bank_text") or ev.get("text", ""), transcript)
             except Exception as e:  # noqa: BLE001 - a broken answer model must not lose the rest of the answer
                 print(f"[speech] answer-quality model failed for interview {self.id}: {type(e).__name__}: {e}", flush=True)
         with self.db.session() as s:
@@ -482,9 +563,13 @@ def run(bus=None, db=None, stop=lambda: False):
     models = Models(bus)
     # load every model now (ASR, VAD, disfluency, answer, fusion: ~20 s the first time), not when the first
     # interview starts, so the first answer of the day is analysed as fast as the rest
-    for m in ("vad", "asr_backend", "whisper", "asr", "disfluency", "answer", "fusion"):
+    for m in ("vad", "asr_backend", "whisper", "whisper_candidate", "asr", "disfluency", "answer", "fusion"):
         getattr(models, m)
-    print(f"[speech] recogniser: {'Whisper ' + settings().whisper_model + ' (pre-trained)' if models.asr_backend == 'whisper' else 'our own ASR'}", flush=True)
+    if models.asr_backend == "whisper":
+        cand = settings().whisper_model_candidate or settings().whisper_model
+        print(f"[speech] recogniser: Whisper (pre-trained): candidate {cand}, interviewer {settings().whisper_model}", flush=True)
+    else:
+        print("[speech] recogniser: our own ASR", flush=True)
     live: dict[int, InterviewSpeech] = {}
     cursors = {"control": bus.last_id("control")}
     print("[speech] ready", flush=True)
@@ -497,6 +582,12 @@ def run(bus=None, db=None, stop=lambda: False):
                 import traceback
 
                 traceback.print_exc()
+
+
+def _leak_words(text: str) -> list[str]:
+    import re
+
+    return re.findall(r"[a-z']+", text.lower())
 
 
 def submit_answer(sp: "InterviewSpeech", ev: dict):

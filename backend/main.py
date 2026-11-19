@@ -295,6 +295,9 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
     def build_report(interview_id: int, c: dict = Depends(host)):
         from backend.reports import build_reports
 
+        interview_data(interview_id, c)                       # ownership check first
+        if not cfg.redis_url.startswith("memory://"):         # (unit tests have no worker to wait for)
+            _wait_for_answers(interview_id)
         data = interview_data(interview_id, c)
         iv_view, cand_view = build_reports(data)
         with db.session() as s:
@@ -305,6 +308,18 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
             s.add(r)
             s.commit()
             return row_dict(r)
+
+    def _wait_for_answers(interview_id: int, timeout: float = 30.0):
+        """Analysing a finished answer takes about 10 s on the worker. Opening the report right after the interview ends
+        would miss the last answers, so wait (up to `timeout`) until every ended question has its analysis."""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            with db.session() as s:
+                ended = {q.id for q in s.scalars(select(Question).where(Question.interview_id == interview_id, Question.end_s.is_not(None)))}
+                done = {a.question_ref for a in s.scalars(select(AnswerScore).where(AnswerScore.interview_id == interview_id))}
+            if ended <= done:
+                return
+            time.sleep(1.0)
 
     @app.get("/api/interviews/{interview_id}/report")
     def get_report(interview_id: int, c: dict = Depends(host)):

@@ -8,6 +8,9 @@ Aim for about 60-80 pages. Every number below comes from a generated file in `do
 2. **Introduction**
    - The faculty problem statement, quoted word for word, and the requirement traceability table (from the build plan).
    - Why "no pre-trained models": the earlier rejection, and what training from scratch proves.
+   - The two OPTIONAL pre-trained add-ons (Whisper speech, MediaPipe face), off by default, labelled in the product, and
+     used here only to show how far our own models are from the state of the art on real microphones and glasses
+     (`docs/pretrained_models.md`). Say this plainly; do not present them as our models.
    - Contributions: dataset + annotation protocol, 12 models, real-time system, feedback reports.
 3. **Related work**: face/gaze estimation (BlazeFace, MPIIGaze), engagement (DAiSEE), ASR (Conformer, CTC, n-gram
    LMs), disfluency (SEP-28k), interview analysis (MIT Interview), meeting analysis (AMI), fairness in affective computing.

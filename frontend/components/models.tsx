@@ -28,12 +28,22 @@ export const MODELS: ModelInfo[] = [
   { name: "Meeting head", group: "Behaviour and content", does: "Engagement and contribution balance for meetings", feeds: "Meeting mode scores", result: "AMI balance MAE 0.03" },
 ];
 
+/** The only pre-trained models in the project. Optional and off by default (MBAS_ASR / MBAS_FACE in .env); the cockpit says when one is on. */
+const ADDONS = [
+  { name: "Whisper base.en (speech recognition)", liveKey: "asr_pretrained", env: "MBAS_ASR=whisper",
+    does: "Live transcript on real microphones, with spoken fillers kept", source: "OpenAI Whisper via faster-whisper, MIT licence, about 150 MB",
+    why: "Our own recogniser was trained on clean audiobook speech only and cannot read real laptop or phone microphones." },
+  { name: "MediaPipe FaceLandmarker (face tracking)", liveKey: "face_pretrained", env: "MBAS_FACE=mediapipe",
+    does: "Face, head pose, eye direction and blinks", source: "Google MediaPipe, Apache-2.0, 3.7 MB",
+    why: "Our own detector loses the face (and the blinks) with glasses: 47% of windows on one real clip, against 100%." },
+] as const;
+
 export function ModelList({ live, compact = false }: { live?: Record<string, boolean> | null; compact?: boolean }) {
   const groups = ["Vision", "Speech", "Behaviour and content"] as const;
   return (
     <div className={compact ? "space-y-5 px-3" : "space-y-6"}>
       <p className={compact ? "text-xs text-faint" : "text-[13px] text-muted"}>
-        {MODELS.length} models, all defined in PyTorch and trained from random weights. No pre-trained models or AI APIs. Trained on public datasets plus synthetic data, so treat scores as decision support.
+        {MODELS.length} models, all defined in PyTorch and trained from random weights, on public datasets plus synthetic data, so treat scores as decision support. By default no pre-trained model and no AI API is used; the two optional pre-trained add-ons are listed at the bottom.
       </p>
       {groups.map((g) => (
         <section key={g}>
@@ -58,6 +68,25 @@ export function ModelList({ live, compact = false }: { live?: Record<string, boo
           </div>
         </section>
       ))}
+      <section>
+        <h3 className="mb-2 text-[11px] font-medium tracking-wider text-faint uppercase">Optional pre-trained add-ons (off by default)</h3>
+        <div className={compact ? "space-y-2" : "grid gap-3 md:grid-cols-2"}>
+          {ADDONS.map((a) => {
+            const on = live ? !!live[a.liveKey] : undefined;
+            return (
+              <Card key={a.name} className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-[14px] font-medium leading-snug">{a.name}</p>
+                  <Badge tone={on ? "warn" : "neutral"} className="shrink-0"><Dot tone={on ? "warn" : "neutral"} /> {on === undefined ? "optional" : on ? "ON: pre-trained" : "off"}</Badge>
+                </div>
+                <p className="mt-1.5 text-[13px] text-muted">{a.does}</p>
+                <p className="mt-2 text-xs text-faint">Why it exists: {a.why}</p>
+                <p className="mt-0.5 text-xs text-faint">Source: {a.source}. Switch: {a.env} in .env.</p>
+              </Card>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

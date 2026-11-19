@@ -23,7 +23,7 @@ export interface WindowMsg {
   end_s: number;
   attention: number | null;
   engagement: string | null;
-  engagement_probs?: Record<string, number>;
+  engagement_probs?: Record<string, number> | null;
   on_screen_ratio: number | null;
   glances: number | null;
   blink_rate: number | null;
@@ -121,6 +121,8 @@ function reduce(s: State, a: { type: "msg"; m: Msg } | { type: "conn"; v: boolea
       if (line.final) return { ...s, lines: [...s.lines, line].slice(-400), partial: { ...s.partial, [line.speaker]: undefined }, latencyMs: latency };
       return { ...s, partial: { ...s.partial, [line.speaker]: line } };
     }
+    case "transcript_retract":      // a line that turned out to be one voice leaking onto the other microphone
+      return { ...s, lines: s.lines.filter((l) => !(l.speaker === m.speaker && l.start_s === m.start_s)) };
     case "window":
       return { ...s, windows: [...s.windows, m as unknown as WindowMsg].slice(-720) };
     case "gaze":

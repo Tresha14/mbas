@@ -145,3 +145,45 @@ def test_filler_and_hedge_rates_exist_from_a_few_sentences():
 def test_common_spoken_hedges_are_counted():
     for t in ("I suppose it is fine.", "It was, something like that.", "If I am not wrong, yes.", "I would say more or less."):
         assert count_phrases(t, HEDGES) >= 1, t
+
+
+# ---------------------------------------------------------------------------- the filler prompt echoed back on noise
+def _guard_result(text):
+    from types import SimpleNamespace as NS
+
+    class Model:
+        def transcribe(self, audio, **kw):
+            return [NS(text=f" {text}", no_speech_prob=0.0, avg_logprob=-0.2, compression_ratio=1.1, words=[])], None
+
+    asr = WhisperStreamingASR(Model(), loud_vad)
+    out = []
+    for k in range(0, 4 * SR, CH):
+        out += asr.accept(sound(4, True)[k:k + CH])
+    return out + asr.flush()
+
+
+def test_a_looped_prompt_is_dropped_but_real_stutters_and_stalls_stay():
+    for echo in ("Okay, so, um, I think it's, like, kind of, like, kind of, like, kind of, like,",
+                 "Okay, so, uh, I mean, I think it's, like, kind of, like, kind of, like, kind of, like,",
+                 "Umm, let me think, like, hmm... Okay, so, uh, I mean, you know, I think maybe it's, like, kind of, um, basically."):
+        assert _guard_result(echo) == [], echo
+    for real in ("I think I think I think we should go with the second option",
+                 "um so like you know I mean",
+                 "Um, so, I think it is, like, a good fit for this role because of my project",
+                 "I am a final year student and I built a web application for mock interviews"):
+        assert len(_guard_result(real)) == 1, real
+
+
+def test_subtitle_phrases_whisper_invents_are_removed_but_the_rest_is_kept():
+    from ml.speech.asr.whisper_streaming import strip_hallucinations
+
+    words = [{"word": w, "start_s": i * 0.3, "end_s": i * 0.3 + 0.25} for i, w in enumerate(["Is", "the", "transcript-", "and", "subscribe."])]
+    text, kept = strip_hallucinations("Is the transcript- and subscribe.", words)
+    assert text == "Is the transcript-" and [w["word"] for w in kept] == ["Is", "the", "transcript-"]
+    assert kept[0]["start_s"] == 0.0 and kept[2]["start_s"] == 0.6                     # the remaining words keep their own times
+    t2, _ = strip_hallucinations("Thanks for watching, see you.", [{"word": w, "start_s": 0, "end_s": 0} for w in "Thanks for watching, see you.".split()])
+    assert t2 == "see you."
+    t3, w3 = strip_hallucinations("I will subscribe to a newsletter about databases", [{"word": w, "start_s": 0, "end_s": 0} for w in "I will subscribe to a newsletter about databases".split()])
+    assert "subscribe" not in t3                                                      # the word itself is never said in an interview here
+    plain = "My project used SQL and I subscribed nowhere"
+    assert strip_hallucinations(plain, [{"word": w, "start_s": 0, "end_s": 0} for w in plain.split()])[0] == plain

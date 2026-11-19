@@ -42,6 +42,9 @@ class Settings:
     auto_questions: str = field(default_factory=lambda: os.environ.get("MBAS_AUTO_QUESTIONS", "auto").strip().lower())
     # Whisper deletes spoken "um" / "uh" unless prompted: "fillers" (default) keeps them, "off" uses no prompt
     whisper_prompt: str = field(default_factory=lambda: os.environ.get("MBAS_WHISPER_PROMPT", "fillers").strip().lower())
+    # a bigger Whisper for the CANDIDATE only (the side that is scored); empty = the same model as everyone else.
+    # small.en reads real voices clearly better than base.en and is about 3x slower (needs a 480 MB download once)
+    whisper_model_candidate: str = field(default_factory=lambda: os.environ.get("MBAS_WHISPER_MODEL_CANDIDATE", "").strip())
     whisper_model: str = field(default_factory=lambda: os.environ.get("MBAS_WHISPER_MODEL", "base.en").strip())
 
 

@@ -63,6 +63,14 @@ switch ($Target) {
     "workers" { $ErrorActionPreference = "Continue"; $env:PYTHONFAULTHANDLER = "1"; & $Py -m backend.workers.run_all }
     "web-install" { Push-Location frontend; npm install; Pop-Location }
     "web" { $ErrorActionPreference = "Continue"; Push-Location frontend; npm run dev; Pop-Location }
+    # The production build is faster and steadier than the dev server (use it for demos): build once, then start it.
+    # Stop the dev server first: both use the frontend\.next folder.
+    # Demo mode: "own" = only models trained by us, "pretrained" = with the optional Whisper + MediaPipe add-ons. Edits .env; restart the workers.
+    "mode-own" { & $Py -m tools.set_mode own }
+    "mode-pretrained" { & $Py -m tools.set_mode pretrained }
+    "mode" { & $Py -m tools.set_mode }
+    "web-build" { $ErrorActionPreference = "Continue"; Push-Location frontend; npm run build; Pop-Location }
+    "web-start" { $ErrorActionPreference = "Continue"; Push-Location frontend; npm run start; Pop-Location }
     "start-all" {
         Set-LanIp
         docker compose up -d --wait postgres redis                  # --wait: returns when postgres/redis are healthy

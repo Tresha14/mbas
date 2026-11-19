@@ -84,7 +84,8 @@ def build_reports(data: dict) -> tuple[dict, dict]:
     def _blink(w):      # a window without a face stores 0 blinks: that is "not measured", not "no blinking"
         return _f((w.get("features") or {}).get("blink_rate_per_min")) if has_face(w) else None
 
-    timeline = [{"t_s": w["end_s"], "attention": _f(w.get("attention")), "engagement": w.get("engagement"),
+    timeline = [{"t_s": w["end_s"], "attention": _f(w.get("attention")) if has_face(w) else None,
+                 "engagement": w.get("engagement") if has_face(w) else None,
                  "facing": _f(None if w.get("on_screen_ratio") is None else 100 * w["on_screen_ratio"]), "blink": _blink(w)}
                 for w in windows]
     speech = sorted(data.get("speech") or [], key=lambda x: x["t_s"])
@@ -110,7 +111,7 @@ def build_reports(data: dict) -> tuple[dict, dict]:
     eng = [w.get("engagement") for w in windows if w.get("engagement")]
     interviewer = {
         "summary": {"questions": len(cards), "mean_effectiveness": _f(np.mean(eff)) if eff else None,
-                    "mean_attention": _mean([w.get("attention") for w in windows]),
+                    "mean_attention": _mean([w.get("attention") for w in windows if has_face(w)]),   # nobody in frame: no attention
                     "engaged_share": round(eng.count("engaged") / len(eng), 3) if eng else None,
                     "follow_ups": len(data["follow_ups"])},
         "radar": radar, "cards": cards, "timeline": timeline, "delivery": delivery, "speech_timeline": speech_timeline,

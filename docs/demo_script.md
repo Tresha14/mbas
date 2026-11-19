@@ -6,7 +6,7 @@ laptop (`https://<LAN_IP>:8444/join/...`) and leave it on the consent page. Then
 
 | Time | Who | Action | Say |
 | --- | --- | --- | --- |
-| 0:00 | Presenter | Dashboard on the projector | "MBAS analyses interviews from video, audio and conversation, and every model here was trained by us from scratch." |
+| 0:00 | Presenter | Dashboard on the projector | "MBAS analyses interviews from video, audio and conversation. The analysis models were trained by us from scratch; two optional pre-trained add-ons (Whisper for speech, MediaPipe for the face) exist, are off by default and are labelled in the cockpit when on." |
 | 0:20 | Candidate | Ticks consent, checks camera/mic, joins, shares screen | "The candidate consents first, and their page shows only a normal video call." |
 | 0:45 | Interviewer | Opens the cockpit, clicks **Start analysis** | "Only the interviewer's token can open the analytics channel; candidate tokens are refused by the server." |
 | 1:00 | Interviewer | Clicks **Ask** on Q01 "Tell me about yourself" | Point at the transcript appearing within about 2 s, with fillers highlighted. |

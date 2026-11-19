@@ -10,7 +10,7 @@ import { Button } from "@/components/ui";
 import { LiveDemo } from "@/components/live-demo";
 
 const pillars = [
-  { icon: Eye, title: "Sees attention", text: "Gaze, glances and engagement from the webcam, measured by models we trained ourselves." },
+  { icon: Eye, title: "Sees attention", text: "Gaze, glances and engagement from the webcam, measured by models trained on our own data." },
   { icon: MessageSquareText, title: "Hears the answer", text: "Live transcript, hesitation and speaking pace, then relevance and structure of every answer." },
   { icon: ShieldCheck, title: "Fair by design", text: "Only the interviewer sees analytics. Candidates receive reviewed, constructive feedback." },
 ];
@@ -42,7 +42,7 @@ export default function Landing() {
             </h1>
             <p className="mt-6 max-w-lg text-[17px] leading-relaxed text-muted">
               A quiet copilot for interviewers: it reads attention, engagement, hesitation and the substance of each answer,
-              and suggests what to ask next. Every model is trained from scratch on our own data.
+              and suggests what to ask next. The analysis models are trained from scratch on our own data; the two optional pre-trained add-ons (speech and face) are off by default and labelled when on.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
               <Link href={signedIn ? "/dashboard" : "/login?mode=register"}><Button size="lg">{signedIn ? "Go to your interviews" : "Get started"} <ArrowRight size={16} /></Button></Link>

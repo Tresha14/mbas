@@ -20,3 +20,13 @@
 
 Keep one number per claim on every slide, and cite its file in small print. Show the synthetic-data label wherever
 synthetic results appear.
+
+
+## Extra slide: honest limits and the optional pre-trained add-ons
+
+- Our speech model (Conformer-CTC, 100 h LibriSpeech, WER 0.137 on test-clean) cannot read real laptop microphones; on a real call it
+  produced unreadable text. Pre-trained Whisper reads the same audio. Show both lines side by side (`docs/pretrained_models.md`).
+- Our face detector finds the face in 47 % of windows on a candidate with glasses and loses blinks; MediaPipe finds it in 100 %.
+- Why we kept training from scratch anyway, what it showed (the gap, its causes: data size, domain), and what would close it
+  (more real recordings, noise augmentation, a bigger model).
+- The add-ons are optional (`MBAS_ASR`, `MBAS_FACE`), off by default and labelled in the cockpit.

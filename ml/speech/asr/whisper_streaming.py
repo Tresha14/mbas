@@ -40,6 +40,28 @@ def _norm(t: str) -> str:
     return " ".join(_NORM.sub(" ", t.lower()).split())
 
 
+# Phrases Whisper learned from video subtitles and writes on noise or at the end of a clip. Nobody says them in an interview.
+HALLUCINATED = [("thank", "you", "for", "watching"), ("thanks", "for", "watching"), ("and", "subscribe"), ("please", "subscribe"),
+                ("subscribe", "to", "the", "channel"), ("subscribe", "to", "my", "channel"), ("subscribe",), ("subtitles", "by")]
+
+
+def strip_hallucinations(text: str, words: list[dict]) -> tuple[str, list[dict]]:
+    """Remove those phrases from the text and from the word list (the words keep their own timestamps)."""
+    toks = [_norm(w["word"]) for w in words]
+    for phrase in sorted(HALLUCINATED, key=len, reverse=True):
+        n = len(phrase)
+        i = 0
+        while i <= len(toks) - n:
+            if tuple(toks[i:i + n]) == phrase:
+                del toks[i:i + n]
+                del words[i:i + n]
+            else:
+                i += 1
+        pattern = r"\s*\b" + r"[\W_]+".join(phrase) + r"\b[\s,.;:!?-]*"
+        text = re.sub(pattern, " ", text, flags=re.IGNORECASE)
+    return " ".join(text.split()), words
+
+
 STOCK = {"thank you", "thank you.", "thanks for watching", "thanks for watching.", "thanks for watching!", "you", "you.",
          "bye", "bye.", "bye!", "okay", "okay.", ".", "so", "so."}
 
@@ -52,7 +74,7 @@ class WhisperStreamingASR:
         self.chunk = int(chunk_s * SR)
         self.end_silence, self.max_utt, self.min_speech = end_silence_s, max_utt_s, min_speech_s
         self.preroll_chunks, self.beam_size = preroll_chunks, beam_size
-        self.prompt, self._prompt_norm = prompt, " " + _norm(prompt or "") + " "
+        self.base_prompt, self.prompt, self._prompt_norm = prompt, prompt, " " + _norm(prompt or "") + " "
         self.pool, self.max_pending = pool, max_pending
         self.pending: deque[Future] = deque()          # utterances being transcribed in the background, oldest first
         self.t0 = 0.0                                  # session time of the next sample (the worker sets it)
@@ -62,6 +84,27 @@ class WhisperStreamingASR:
         self.speech_s = 0.0
         self.silence = 0.0
         self.recent: list[tuple[float, np.ndarray]] = []   # last quiet chunks, kept as lead-in for the next utterance
+
+    def _echo_of_prompt(self, ws: list[str]) -> bool:
+        """The prompt repeated or looped back on noise ("okay so um I think it's like kind of like kind of like kind of"):
+        a long run of words that almost all come from the prompt's own vocabulary, or a 3-4 word phrase repeated three times
+        running. Deliberately narrow: a real stutter ("I think I think I think") or a short stall ("um so like you know")
+        is genuine speech and must stay."""
+        if len(ws) >= 9:
+            vocab = set(self._prompt_norm.split())
+            if sum(w in vocab for w in ws) / len(ws) >= 0.9:
+                return True
+        for n in (3, 4):
+            for i in range(len(ws) - 3 * n + 1):
+                if ws[i:i + n] == ws[i + n:i + 2 * n] == ws[i + 2 * n:i + 3 * n]:
+                    return True
+        return False
+
+    def set_context(self, text: str):
+        """Tell Whisper who is speaking and what was asked (a name, the question): it then spells names and domain words
+        right. Appended to the filler prompt; the echo guard still looks only at the filler prompt."""
+        text = " ".join((text or "").split())[:300]
+        self.prompt = (f"{self.base_prompt} {text}".strip() if self.base_prompt else (text or None))
 
     # ------------------------------------------------------------------ speech / no speech
     def _is_speech(self, chunk: np.ndarray) -> bool:
@@ -139,10 +182,12 @@ class WhisperStreamingASR:
             parts.append(text)
             for w in s.words or []:
                 words.append({"word": w.word.strip(), "start_s": round(t0 + w.start, 2), "end_s": round(t0 + w.end, 2)})
-        text = " ".join(parts).strip()
+        text, words = strip_hallucinations(" ".join(parts).strip(), words)
         if not text or (speech_s < 3.0 and text.lower() in STOCK):
             return []
         n = _norm(text)
         if self.prompt and len(n.split()) >= 3 and f" {n} " in self._prompt_norm:      # only the prompt echoed back
+            return []
+        if self.base_prompt and self._echo_of_prompt(n.split()):
             return []
         return [Result(text=text, final=True, words=words, t_s=t0 + len(audio) / SR)]

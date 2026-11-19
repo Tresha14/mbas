@@ -149,3 +149,18 @@ Start everything with `.\tasks.ps1 start-all` (needs Docker Desktop running), th
 - Long training on a laptop: keep it **plugged in** and set Windows sleep to **Never** while plugged in. Sleep or
   battery mode pauses or slows training (this happened once).
 - Push to `Tresha14/mbas` branch `main`.
+
+
+## Known limits (written plainly)
+
+- **Engagement** (the engagement score and gauge) is experimental: its model was trained on synthetic window features and reads low
+  on real recordings (domain gap). Attention, glances, reading and blink signals do not depend on it. The cockpit labels it.
+- **Our own speech recogniser** only knows clean audiobook-style audio (see `docs/pretrained_models.md`).
+- **Our own face detector** loses the face often with glasses or small faces, and then also the blinks.
+- Interviewer microphones on laptops are quiet and noisy; use a headset. When two people share a room the same words can appear on
+  both microphones: the quieter copy is dropped automatically.
+- **Answer relevance and quality scores exist only for questions of the bank.** The answer-quality model was trained on the bank's
+  questions and answers, so on a question it has never seen it reads low even for a correct answer ("the capital of India is Delhi"
+  scored 0.10). A question clicked from the list, or heard from the interviewer and clearly matched to a bank question
+  (`backend/question_bank.py`), is scored. A free-form question gets no relevance score, no "topic not covered" follow-up and no such
+  line in the candidate feedback; its effectiveness comes from delivery and vision only.

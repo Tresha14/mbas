@@ -78,6 +78,9 @@ class InterviewVision:
         f = self.pipe.window_features(vad.get("candidate", 0.0), vad.get("interviewer", 0.0), vad.get("state", "answering"))
         clean = {k: (float(v) if isinstance(v, (int, float, np.floating, np.integer)) else v) for k, v in f.items()
                  if k not in ("engagement_probs",)}
+        seen = f.get("face_present_ratio", 1.0) >= 0.5       # the models score zeros when nobody is in frame: say nothing instead
+        if not seen:
+            f = {**f, "attention_score": None, "engagement_label": None, "engagement_probs": None}
         with self.db.session() as s:
             s.add(WindowScore(interview_id=self.id, start_s=round(t - WIN_S, 2), end_s=round(t, 2),
                               attention=f.get("attention_score"), engagement=f.get("engagement_label"),

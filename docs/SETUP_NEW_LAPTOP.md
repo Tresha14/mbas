@@ -71,6 +71,17 @@ All commands in **PowerShell**, inside the project folder.
    .\.venv\Scripts\python -m pip install faster-whisper
    ```
    then add `MBAS_ASR=whisper` to `.env` and restart the workers. See `docs/pretrained_models.md`.
+   For a clearer candidate transcript on a **strong** computer add `MBAS_WHISPER_MODEL_CANDIDATE=small.en` (a 480 MB model,
+   downloaded once). On a 4-core laptop it made the live pipeline fall behind (see `docs/pretrained_models.md`): do not use it there.
+
+8. **Optional: more reliable face tracking (glasses, small faces).**
+   ```powershell
+   .\.venv\Scripts\python -m pip install --no-deps mediapipe matplotlib
+   mkdir checkpoints\mediapipe
+   curl.exe -L -o checkpoints\mediapipe\face_landmarker.task https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task
+   ```
+   then add `MBAS_FACE=mediapipe` to `.env` and restart the workers. `--no-deps` is deliberate (see `docs/pretrained_models.md`).
+   Run `python -m tools.preflight` afterwards: it shows which recogniser and which face tracker are active.
 
 ## Every time you run it
 
@@ -112,6 +123,7 @@ window prints the address) and allow TCP 8444 and UDP 7882 in Windows Firewall o
 | "model not trained" / preflight FAIL on a checkpoint | Extract the v2 models zip into the `mbas` folder |
 | Port already in use (5442, 6389, 7880, 3020, 8020) | Close the other program, or `docker compose down` and start again |
 | Workers window shows an error | Run `.\.venv\Scripts\python -m tools.preflight` and fix what it reports |
+| The transcript stops, an answer is never scored, or a worker seems to have died | Read `runs\workers.log` (the workers write every traceback and warning there, and a native crash leaves its stack trace); a line `[whisper] falling behind real time` means the computer is too busy for the chosen model: use `MBAS_WHISPER_MODEL=base.en` and close other programs |
 
 ## Things the cockpit now does for you
 
@@ -121,5 +133,7 @@ window prints the address) and allow TCP 8444 and UDP 7882 in Windows Firewall o
 - **Automatic questions** for interviews held on Meet, Zoom or Teams: when you speak a question, it is picked up from your
   microphone and the candidate's answer is scored when the next question starts or the interview ends. In our own room
   you still pick questions from the list (set `MBAS_AUTO_QUESTIONS=on` in `.env` to use voice detection there too).
+- **Relevance scores only where they mean something.** A question spoken in your own words that is not one of the bank's gets no
+  relevance score (the model has never seen it); a spoken question that clearly is a bank question is scored against the bank's wording.
 - **HTML report**: the report page has an "HTML" button that downloads the interviewer report as one file you can email
   or keep (it contains scores, so do not send it to the candidate).

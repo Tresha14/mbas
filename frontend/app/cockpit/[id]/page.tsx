@@ -14,7 +14,7 @@ import { Header, VideoSlot } from "@/components/shell";
 import { Badge, Button, Card, cn, Disclosure, Dot, Empty, mmss, scoreTone, SectionLabel, Segmented, Sheet, Tabs, Textarea } from "@/components/ui";
 import { useAnalytics, type AnswerMsg, type Line } from "@/lib/analytics";
 import { api, type Interview, type Question } from "@/lib/api";
-import { CALL_SOURCES, CAPTURE_PREFIX, captureCall, joinRoom, PLATFORMS, roleOf, type CallCapture, type CallSource } from "@/lib/room";
+import { CALL_SOURCES, CAPTURE_PREFIX, captureCall, INTERVIEWER_MIC, joinRoom, PLATFORMS, roleOf, type CallCapture, type CallSource } from "@/lib/room";
 
 function TranscriptLine({ l, active }: { l: Line; active: boolean }) {
   const words = l.words?.length ? l.words.map((w) => w.word) : l.text.split(" ");
@@ -83,7 +83,7 @@ export default function Cockpit() {
         // a captured call is already playing in its own tab / app: playing it here too would echo
         if (kind === "audio" && el && !p.identity.startsWith(CAPTURE_PREFIX)) document.body.appendChild(el);
       },
-    }).then((r) => { if (cancelled) r.disconnect(); else { room.current = r; setLk(r); } })
+    }, undefined, INTERVIEWER_MIC).then((r) => { if (cancelled) r.disconnect(); else { room.current = r; setLk(r); } })
       .catch((e) => setCallWarning(`Could not connect to the video call (${(e as Error).message}). Live analysis data may still appear.`));
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => { cancelled = true; clearInterval(t); room.current?.disconnect(); };
@@ -241,7 +241,7 @@ export default function Cockpit() {
               </button>
             )}
             <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/45 p-1.5 backdrop-blur-md">
-              <CallControls room={lk} tone="dark" />
+              <CallControls room={lk} tone="dark" mic={INTERVIEWER_MIC} />
             </div>
             <div className="pointer-events-none absolute bottom-4 left-4 w-40 overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/15">
               <VideoSlot el={self} label="You" muted className="aspect-video rounded-2xl" />
@@ -300,7 +300,7 @@ export default function Cockpit() {
             <SectionLabel>Signals</SectionLabel>
             <div className="divide-y divide-line">
               <Signal label="Attention" value={last?.attention} history={state.windows.map((w) => w.attention)} />
-              <Signal label="Engagement" value={engagedPct(last)} unit="%" history={state.windows.map((w) => engagedPct(w))} />
+              <Signal label="Engagement (experimental)" value={engagedPct(last)} unit="%" history={state.windows.map((w) => engagedPct(w))} />
               <Signal label="Hesitation" value={state.answers.length ? hesitationHist[hesitationHist.length - 1] : null} history={hesitationHist} invert hint="Per answer" />
             </div>
             {state.speaking && (

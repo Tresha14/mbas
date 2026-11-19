@@ -20,7 +20,12 @@ function kindOf(track: RemoteTrack): Kind {
   return track.source === Track.Source.ScreenShare ? "screen" : "camera";
 }
 
-export async function joinRoom(interviewId: number, h: RoomHandlers, publish = { camera: true, mic: true }): Promise<Room> {
+/** The interviewer's microphone: cleaned by the browser (noise suppression, gain control), because their voice is only
+ *  transcribed, never analysed for pitch or breaks; a quiet, noisy laptop mic is otherwise the weakest audio in the call. */
+export const INTERVIEWER_MIC = { echoCancellation: true, noiseSuppression: true, autoGainControl: true } as const;
+
+export async function joinRoom(interviewId: number, h: RoomHandlers, publish = { camera: true, mic: true },
+                               mic: { echoCancellation?: boolean; noiseSuppression?: boolean; autoGainControl?: boolean } = { echoCancellation: true, noiseSuppression: false }): Promise<Room> {
   const { token, url } = await api.livekit(interviewId);
   const room = new Room({ adaptiveStream: true, dynacast: true });
   const refresh = () => h.onParticipants?.(Array.from(room.remoteParticipants.values()));
@@ -51,7 +56,7 @@ export async function joinRoom(interviewId: number, h: RoomHandlers, publish = {
     catch { h.onWarning?.("Your camera could not be started (permission denied or in use). You are in the call without video."); }
   }
   if (publish.mic) {
-    try { await room.localParticipant.setMicrophoneEnabled(true, { echoCancellation: true, noiseSuppression: false }); }
+    try { await room.localParticipant.setMicrophoneEnabled(true, mic); }
     catch { h.onWarning?.("Your microphone could not be started (permission denied or in use). You are in the call without audio."); }
   }
   refresh();

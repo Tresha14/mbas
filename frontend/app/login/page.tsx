@@ -84,8 +84,8 @@ export default function Login() {
               See what an interview <em className="text-[#7fd1c6]">really</em> said.
             </h2>
             <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-white/55 [@media(max-height:700px)]:hidden">
-              Eyes, voice and words, read live by models we trained ourselves: attention, hesitation, fillers, pauses and
-              answer quality, with a fair report at the end.
+              Eyes, voice and words, read live by models trained on our own data: attention, hesitation, fillers, pauses and
+              answer quality, with a fair report at the end. Optional pre-trained add-ons are always labelled.
             </p>
           </div>
           <LiveDemo />

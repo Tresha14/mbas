@@ -96,6 +96,25 @@ class Models:
             return None
 
     @cached_property
+    def whisper_candidate(self):
+        """The (optionally bigger) Whisper used for the candidate's track; falls back to the standard one."""
+        from backend.config import settings
+
+        name = settings().whisper_model_candidate
+        if not name or name == settings().whisper_model or self.whisper is None:
+            return self.whisper
+        try:
+            from faster_whisper import WhisperModel
+
+            return WhisperModel(name, device="cpu", compute_type="int8", cpu_threads=4)
+        except Exception as e:  # noqa: BLE001
+            print(f"[speech] Whisper {name} unavailable ({type(e).__name__}: {e}); using {settings().whisper_model}", flush=True)
+            return self.whisper
+
+    def whisper_for(self, role: str):
+        return self.whisper_candidate if role == "candidate" else self.whisper
+
+    @cached_property
     def whisper_pool(self):
         """One background thread that runs every Whisper transcription, so the audio loops never wait for it."""
         from concurrent.futures import ThreadPoolExecutor

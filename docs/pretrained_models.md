@@ -90,3 +90,48 @@ The same recording replayed in real time through the fixed workers: transcript t
 (was 61), answers analysed 4 (was 1), filler / hedge rate present in 34 of 40 speech-stat rows (was 7 of 21).
 Filler and hedge rates are now computed over the last minute of words, from 8 words on (before: 30 s and 15 words, which
 usually gave "no value").
+
+
+## Which mode to demonstrate
+
+| Mode | `.env` | What it shows |
+| --- | --- | --- |
+| Our models only (the project's claim) | `MBAS_ASR=own`, `MBAS_FACE=own` | everything is trained by us; the transcript and blink readings are weak on real microphones and glasses |
+| With pre-trained add-ons | `MBAS_ASR=whisper`, `MBAS_FACE=mediapipe` | a usable transcript and face tracking; the cockpit says when each add-on is on |
+
+The faculty rejected an earlier version for using pre-trained models, so decide in advance which mode the demo runs in and say
+so in the first minute. Switch with one command, then restart the workers (close their window and run `.\tasks.ps1 workers`):
+
+```powershell
+.\tasks.ps1 mode-own          # only models trained by us
+.\tasks.ps1 mode-pretrained   # with the optional Whisper and MediaPipe add-ons
+.\tasks.ps1 mode              # show which mode is set
+```
+
+`python -m tools.preflight` and the cockpit ("Face detected (MediaPipe)", the Whisper note above the transcript) show what is active.
+
+
+## Choosing the Whisper size (measured on a 4-core laptop)
+
+On the Meet recording, `small.en` reads the candidate clearly better than `base.en` (it got "like speedy transcript like if you talk
+fast" and "Okay, got it" where `base.en` did not). On an Intel i5-10300H (4 cores / 8 threads, 16 GB RAM with 4 GB free) running the
+whole pipeline (video, MediaPipe, the call, Docker), `small.en` for the candidate made the real-time system fall behind: answer
+analyses ran 30-80 s late and one answer was never analysed, where `base.en` analysed all four. So:
+
+- **Default: `base.en` for both sides.** Keeps up with real time on this laptop.
+- `MBAS_WHISPER_MODEL_CANDIDATE=small.en` is an option for a stronger computer (for example 8+ cores and 32 GB). Check
+  `runs/workers.log` for `[whisper] falling behind real time` after a test.
+
+With the larger model the filler prompt could also be echoed back on noise ("...like, kind of, like, kind of, like..."). That is now
+caught for every model: output made almost entirely of the prompt's own words, or a 3-4 word phrase repeated three times, is dropped
+(a real stutter such as "I think I think I think" or a short stall such as "um so like you know" is kept).
+
+The recogniser is also told the candidate's name and the current question ("Candidate: Trisha. Question: ..."), which fixed the
+spelling of the name on the Meet recording.
+
+**Interviewer microphone.** The cockpit asks the browser for noise suppression and gain control on the interviewer's microphone only
+(it is transcribed, never analysed for pitch or breaks); the candidate's microphone is left raw because its pitch and voice-break
+measures need the unprocessed signal.
+
+**One voice on two microphones.** When the same words appear on both tracks at the same time (a microphone hearing the speakers),
+the quieter track is the leak and its copy is dropped, or retracted from the screen if it was already shown.

@@ -10,7 +10,7 @@ type Kind = "mic" | "cam";
 /** Mute / camera buttons for the call. They read the real state of your devices from the call (not a guess), so they
  *  stay right when a device failed to start or was switched off from elsewhere. Renders two buttons; the page decides
  *  the wrapper. `dark` is for buttons over video, `light` for the normal page. */
-export function CallControls({ room, tone = "light" }: { room: Room | null; tone?: "dark" | "light" }) {
+export function CallControls({ room, tone = "light", mic }: { room: Room | null; tone?: "dark" | "light"; mic?: { echoCancellation?: boolean; noiseSuppression?: boolean; autoGainControl?: boolean } }) {
   const [on, setOn] = useState<Record<Kind, boolean>>({ mic: true, cam: true });
   const [busy, setBusy] = useState<Kind | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export function CallControls({ room, tone = "light" }: { room: Room | null; tone
     setBusy(kind);
     setError(null);
     try {
-      if (kind === "mic") await room.localParticipant.setMicrophoneEnabled(!on.mic, { echoCancellation: true, noiseSuppression: false });
+      if (kind === "mic") await room.localParticipant.setMicrophoneEnabled(!on.mic, mic ?? { echoCancellation: true, noiseSuppression: false });
       else await room.localParticipant.setCameraEnabled(!on.cam, { resolution: { width: 1280, height: 720, frameRate: 15 } });
     } catch {
       setError(kind === "mic" ? "Could not start the microphone. Another app or tab may be using it." : "Could not start the camera. Another app or tab may be using it.");
