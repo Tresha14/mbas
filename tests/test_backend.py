@@ -347,3 +347,36 @@ def test_report_includes_combined_flags_list():
 
     iv, _ = build_reports(_data())
     assert iv["combined_flags"] == []
+
+
+# ---------------------------------------------------------------------------- human-rating validation (ported)
+def test_rating_statistics_match_hand_calculated_values():
+    from tools.validate_ratings import cohens_kappa, correlate, pearson, rater_agreement, spearman
+
+    assert pearson([1, 2, 3], [2, 4, 6]) == 1.0 and pearson([1, 2, 3], [3, 2, 1]) == -1.0
+    assert pearson([1, 2, 3], [5, 5, 5]) is None and pearson([1], [1]) is None          # undefined, not 0
+    assert spearman([1, 2, 3, 4], [1, 4, 9, 16]) == 1.0                                 # monotonic but not linear
+    assert abs(spearman([1, 2, 2, 3], [1, 2, 3, 4]) - 0.9486832980505138) < 1e-9        # ties share a mean rank
+    # observed 3/4, expected .5*.25 + .5*.75 = .5, so kappa = (.75-.5)/.5
+    assert abs(cohens_kappa([1, 1, 2, 2], [1, 2, 2, 2]) - 0.5) < 1e-12
+    assert cohens_kappa([3, 3, 3], [3, 3, 3]) is None and cohens_kappa([], []) is None   # no disagreement to measure
+    assert rater_agreement({"A": {1: 1, 2: 1, 3: 2, 4: 2}, "B": {1: 1, 2: 2, 3: 2, 4: 2}})["kappa"] == 0.5
+    c = correlate([60, 70, 80], [3, 4, 5])
+    assert c["pearson_r"] == 1.0 and "preliminary" in c["note"]                          # tiny sample is flagged, not hidden
+
+
+def test_validate_ratings_reads_csv_and_skips_interviews_without_a_score(tmp_path):
+    from tools.validate_ratings import analyse, read_ratings, write_template
+
+    t = tmp_path / "t.csv"
+    write_template(t)
+    try:
+        read_ratings(t)
+        raise AssertionError("the example row must not count as data")
+    except SystemExit as e:
+        assert "no ratings" in str(e)
+    p = tmp_path / "r.csv"
+    p.write_text("interview_id,rater_id,overall,content\n1,A,2,2\n1,B,2,3\n2,A,4,4\n2,B,5,4\n3,A,5,5\n3,B,5,5\n", encoding="utf-8")
+    res = analyse(read_ratings(p), {1: {"overall": 40.0, "content": 35.0}, 2: {"overall": 75.0, "content": 70.0}, 3: {"overall": None, "content": 90.0}})
+    assert res["overall"]["system_vs_human"]["n"] == 2          # interview 3 has no overall score: skipped, not counted as 0
+    assert res["content"]["system_vs_human"]["n"] == 3 and res["content"]["system_vs_human"]["pearson_r"] > 0.9

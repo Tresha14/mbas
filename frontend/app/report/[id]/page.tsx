@@ -114,6 +114,20 @@ function Moments({ items, onJump }: { items: Moment[]; onJump: (t: number) => vo
   );
 }
 
+function CombinedFlags({ items, onJump }: { items: NonNullable<ReportRow["interviewer_view"]["combined_flags"]>; onJump: (t: number) => void }) {
+  return (
+    <div className="divide-y divide-border">
+      {items.map((f, i) => (
+        <button key={i} onClick={() => onJump(f.t_start)} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1 py-3 text-left hover:bg-surface-2/40">
+          <span className="w-24 text-xs tabular-nums text-faint">{f.time}</span>
+          <span className="min-w-0 flex-1 text-[13px] text-fg">{f.text}</span>
+          {f.question_order != null && <Badge tone="neutral">Question {f.question_order}</Badge>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function BehaviourView({ sections, onJump, cursor }: { sections: BehaviourSection[]; onJump: (t: number) => void; cursor: number }) {
   return (
     <div className="space-y-6">
@@ -265,6 +279,14 @@ export default function Report() {
           <Card className="mt-6 px-6">
             <SectionLabel>Moments to rewatch</SectionLabel>
             <Moments items={v.moments} onJump={jump} />
+          </Card>
+        )}
+
+        {show("overview") && !!v.combined_flags?.length && (
+          <Card className="mt-6 px-6">
+            <SectionLabel>Where several signals dropped together</SectionLabel>
+            <p className="mt-1 text-[13px] text-muted">One pause or glance away is normal. These are stretches where more than one signal got worse at the same time, compared with this candidate&apos;s own average.</p>
+            <CombinedFlags items={v.combined_flags} onJump={jump} />
           </Card>
         )}
 

@@ -246,6 +246,7 @@ export interface ReportRow {
     matrix?: Matrix;
     pressure?: Pressure | null;
     moments?: Moment[];
+    combined_flags?: { t_start: number; t_end: number; time: string; signals: string[]; phrases: string[]; text: string; question_order: number | null; question_ref: number | null }[];
   };
   candidate_view: CandidateView;
   released: boolean;
