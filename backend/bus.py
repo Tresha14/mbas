@@ -28,8 +28,15 @@ def _maxlen(stream: str) -> int:
 class RedisBus:
     def __init__(self, url: str):
         import redis
+        from redis.backoff import ExponentialBackoff
+        from redis.retry import Retry
 
-        self.r = redis.Redis.from_url(url)
+        # Docker on Windows drops forwarded connections when containers are recreated, and a laptop that slept
+        # comes back with dead sockets: reconnect and retry (up to ~15 s) instead of failing the first command
+        self.errors = (redis.exceptions.ConnectionError, redis.exceptions.TimeoutError)
+        self.r = redis.Redis.from_url(url, retry=Retry(ExponentialBackoff(cap=2.0, base=0.1), 10),
+                                      retry_on_error=list(self.errors), socket_keepalive=True,
+                                      health_check_interval=15)
 
     def publish(self, stream: str, msg: dict[str, Any], binary: bytes | None = None) -> str:
         fields = {"json": json.dumps(msg, default=str)}
@@ -39,7 +46,12 @@ class RedisBus:
 
     def read(self, streams: dict[str, str], block_ms: int = 1000, count: int = 100) -> list[tuple[str, str, dict, bytes | None]]:
         out = []
-        res = self.r.xread(streams, block=block_ms, count=count) or []
+        try:
+            res = self.r.xread(streams, block=block_ms, count=count) or []
+        except self.errors as e:     # Redis still unreachable after the retries: the worker loops just try again
+            print(f"[bus] Redis unavailable ({type(e).__name__}); retrying", flush=True)
+            time.sleep(1.0)
+            return out
         for name, items in res:
             for mid, f in items:
                 out.append((name.decode(), mid.decode(), json.loads(f[b"json"]), f.get(b"bin")))
