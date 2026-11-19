@@ -14,7 +14,7 @@ from collections import Counter, defaultdict
 
 import numpy as np
 
-from backend.report_metrics import (behaviour_sections, card_details, confidence_matrix, key_moments,
+from backend.report_metrics import (behaviour_sections, card_details, confidence_matrix, has_face, key_moments,
                                     pressure_response, scorecard)
 
 SUB = ("clarity", "confidence", "engagement", "relevance", "fluency")
@@ -80,8 +80,8 @@ def build_reports(data: dict) -> tuple[dict, dict]:
     radar = {k: _nanmean_safe([c["subscores"].get(k) for c in cards]) if cards else None for k in SUB}
     eff = [c["effectiveness"] for c in cards if c["effectiveness"] is not None]
 
-    def _blink(w):
-        return _f((w.get("features") or {}).get("blink_rate_per_min"))
+    def _blink(w):      # a window without a face stores 0 blinks: that is "not measured", not "no blinking"
+        return _f((w.get("features") or {}).get("blink_rate_per_min")) if has_face(w) else None
 
     timeline = [{"t_s": w["end_s"], "attention": _f(w.get("attention")), "engagement": w.get("engagement"),
                  "facing": _f(None if w.get("on_screen_ratio") is None else 100 * w["on_screen_ratio"]), "blink": _blink(w)}
@@ -138,6 +138,7 @@ def candidate_feedback(cards: list[dict], windows: list[dict]) -> dict:
     for c in cards:
         by_cat[c.get("category") or "general"].append(c)
 
+    spoke = any((c.get("transcript") or "").strip() for c in cards)       # nothing below is true of a silent answer
     lat = [(c["response_latency_s"], c) for c in cards if c.get("response_latency_s") is not None]
     if lat:
         for cat, cs in by_cat.items():
@@ -162,7 +163,7 @@ def candidate_feedback(cards: list[dict], windows: list[dict]) -> dict:
             top = f" Your most frequent was “{used.most_common(1)[0][0]}”." if used else ""
             issues.append((avg / 4, "fillers", f"About {avg:.0f} filler words per 100 words (most in the answer at "
                                                f"{_mmss(c['ask_s'] or 0)}).{top}", c))
-    elif cards:
+    elif spoke:
         strengths.append("Your answers had very few filler words.")
     lp = [c for c in cards if (c.get("longest_pause_s") or 0) > 3 or (c.get("very_long_pauses") or 0) > 0]
     if lp:
@@ -219,10 +220,10 @@ def candidate_feedback(cards: list[dict], windows: list[dict]) -> dict:
                       "timestamp": _mmss(c["ask_s"]) if c and c.get("ask_s") is not None else None})
         if len(areas) == 3:
             break
-    if len(areas) < 3 and "detail" not in seen and cards:
+    if len(areas) < 3 and "detail" not in seen and spoke:
         areas.append({"area": "detail", "observation": "Adding concrete numbers would make your examples stronger.",
                       "tip": TIPS["detail"], "timestamp": None})
-    return {"strengths": strengths[:4] or ["You completed the full interview and answered every question."],
+    return {"strengths": strengths[:4] or (["You completed the full interview and answered every question."] if spoke else []),
             "improvements": areas[:3],
             "closing": "This feedback was prepared from your mock interview and reviewed by your interviewer. "
                        "It describes how the conversation went, not your worth as a candidate."}

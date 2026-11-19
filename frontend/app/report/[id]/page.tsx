@@ -73,6 +73,7 @@ function ScorecardView({ sc }: { sc: Scorecard }) {
         <div className="min-w-60 flex-1">
           <SectionLabel>Final rating</SectionLabel>
           <p className="font-display text-3xl tabular-nums">{sc.overall ?? "–"}<span className="text-base text-faint"> / 100</span></p>
+          {sc.overall == null && <p className="mt-1 text-[13px] text-muted">{sc.note ?? "Not enough data to rate this interview yet."}</p>}
           <p className="mt-1 text-[13px] text-muted">
             {sc.strongest && <>Strongest: <b className="font-medium text-fg">{dimLabel[sc.strongest]}</b>. </>}
             {sc.weakest && <>Most room to grow: <b className="font-medium text-fg">{dimLabel[sc.weakest]}</b>.</>}

@@ -201,6 +201,7 @@ export interface Scorecard {
   grade_word: string | null;
   strongest: string | null;
   weakest: string | null;
+  note?: string | null;
   method: string;
 }
 

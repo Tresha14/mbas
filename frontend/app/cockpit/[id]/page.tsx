@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { GazePlot, Signal, TrendChart } from "@/components/charts";
 import { FlaggedMoments, LiveMetrics } from "@/components/live";
 import { ModelList } from "@/components/models";
+import { CallControls } from "@/components/call-controls";
 import { Header, VideoSlot } from "@/components/shell";
 import { Badge, Button, Card, cn, Disclosure, Dot, Empty, mmss, scoreTone, SectionLabel, Segmented, Sheet, Tabs, Textarea } from "@/components/ui";
 import { useAnalytics, type AnswerMsg, type Line } from "@/lib/analytics";
@@ -49,6 +50,8 @@ export default function Cockpit() {
   const [notes, setNotes] = useState("");
   const [cam, setCam] = useState<HTMLMediaElement | null>(null);
   const [screen, setScreen] = useState<HTMLMediaElement | null>(null);
+  const [self, setSelf] = useState<HTMLMediaElement | null>(null);
+  const [lk, setLk] = useState<Room | null>(null);
   const [swap, setSwap] = useState(false);
   const [detail, setDetail] = useState("transcript");
   const [flow, setFlow] = useState("questions");
@@ -71,6 +74,7 @@ export default function Cockpit() {
     api.questions().then(setQuestions).catch(() => undefined);
     joinRoom(id, {
       onWarning: setCallWarning,
+      onLocalCamera: setSelf,
       onConnection: (s) => setCallWarning(s === "connected" ? null : s === "reconnecting" ? "Video connection lost. Reconnecting…" : "Disconnected from the video call. Reload the page to rejoin; analysis data keeps arriving."),
       onTrack: (kind, el, p) => {
         if (roleOf(p) !== "candidate") return;
@@ -79,7 +83,7 @@ export default function Cockpit() {
         // a captured call is already playing in its own tab / app: playing it here too would echo
         if (kind === "audio" && el && !p.identity.startsWith(CAPTURE_PREFIX)) document.body.appendChild(el);
       },
-    }).then((r) => { if (cancelled) r.disconnect(); else room.current = r; })
+    }).then((r) => { if (cancelled) r.disconnect(); else { room.current = r; setLk(r); } })
       .catch((e) => setCallWarning(`Could not connect to the video call (${(e as Error).message}). Live analysis data may still appear.`));
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => { cancelled = true; clearInterval(t); room.current?.disconnect(); };
@@ -235,6 +239,12 @@ export default function Cockpit() {
                 <span className="absolute inset-0 grid place-items-center bg-black/40 opacity-0 transition group-hover:opacity-100"><ArrowLeftRight size={18} className="text-white" /></span>
               </button>
             )}
+            <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/45 p-1.5 backdrop-blur-md">
+              <CallControls room={lk} tone="dark" />
+            </div>
+            <div className="pointer-events-none absolute bottom-4 left-4 w-40 overflow-hidden rounded-2xl shadow-2xl ring-1 ring-white/15">
+              <VideoSlot el={self} label="You" muted className="aspect-video rounded-2xl" />
+            </div>
             <AnimatePresence>
               {showAlert && (
                 <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}

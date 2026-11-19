@@ -1,5 +1,8 @@
 {
 	auto_https disable_redirects
+	# Browsers send no server name when you open https://<IP>, and inside Docker Caddy cannot see which address the
+	# client used, so without this the TLS handshake to the LAN IP fails (phones / second laptops).
+	default_sni {$MBAS_LAN_IP}
 }
 
 https://localhost:8443, https://{$MBAS_LAN_IP}:8443 {

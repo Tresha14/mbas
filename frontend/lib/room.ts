@@ -11,6 +11,8 @@ export interface RoomHandlers {
   onWarning?: (message: string) => void;
   onConnection?: (state: "connected" | "reconnecting" | "disconnected") => void;
   onScreenShareStopped?: () => void;
+  /** your own camera, for the "You" tile: a playing element, or null once it is stopped */
+  onLocalCamera?: (el: HTMLMediaElement | null) => void;
 }
 
 function kindOf(track: RemoteTrack): Kind {
@@ -31,7 +33,16 @@ export async function joinRoom(interviewId: number, h: RoomHandlers, publish = {
     .on(RoomEvent.Reconnecting, () => h.onConnection?.("reconnecting"))
     .on(RoomEvent.Reconnected, () => h.onConnection?.("connected"))
     .on(RoomEvent.Disconnected, () => h.onConnection?.("disconnected"))
-    .on(RoomEvent.LocalTrackUnpublished, (pub) => { if (pub.source === Track.Source.ScreenShare) h.onScreenShareStopped?.(); })
+    .on(RoomEvent.LocalTrackPublished, (pub) => {
+      if (pub.source === Track.Source.Camera && pub.track) h.onLocalCamera?.(pub.track.attach());
+    })
+    .on(RoomEvent.LocalTrackUnpublished, (pub) => {
+      if (pub.source === Track.Source.ScreenShare) h.onScreenShareStopped?.();
+      if (pub.source === Track.Source.Camera) {
+        pub.track?.detach().forEach((e) => e.remove());
+        h.onLocalCamera?.(null);
+      }
+    })
     .on(RoomEvent.ParticipantConnected, refresh)
     .on(RoomEvent.ParticipantDisconnected, refresh);
   await room.connect(livekitUrl(url), token);

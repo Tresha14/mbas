@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Meter } from "@/components/charts";
+import { CallControls } from "@/components/call-controls";
 import { Header, VideoSlot } from "@/components/shell";
 import { Badge, Button, Card, Dot, Empty, SectionLabel } from "@/components/ui";
 import { useAnalytics } from "@/lib/analytics";
@@ -21,6 +22,8 @@ export default function Meeting() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [callWarning, setCallWarning] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [self, setSelf] = useState<HTMLMediaElement | null>(null);
+  const [lk, setLk] = useState<Room | null>(null);
   const [me, setMe] = useState<{ identity: string; name: string } | null>(null);
   const { state } = useAnalytics(iv?.id ?? null);
 
@@ -38,8 +41,9 @@ export default function Meeting() {
         });
         if (kind === "audio" && el) document.body.appendChild(el);
       },
+      onLocalCamera: setSelf,
       onParticipants: setPeople,
-    }).then((r) => { if (cancelled) r.disconnect(); else { room.current = r; setMe({ identity: r.localParticipant.identity, name: `${r.localParticipant.name || "Host"} (you)` }); } })
+    }).then((r) => { if (cancelled) r.disconnect(); else { room.current = r; setLk(r); setMe({ identity: r.localParticipant.identity, name: `${r.localParticipant.name || "Host"} (you)` }); } })
       .catch((e) => setCallWarning(`Could not connect to the video call (${(e as Error).message}). Live analysis data may still appear.`));
     return () => { cancelled = true; room.current?.disconnect(); };
   }, [id]);
@@ -70,13 +74,18 @@ export default function Meeting() {
           <div className="mb-5 flex items-center gap-3">
             <h1 className="font-display text-2xl tracking-tight">{iv?.title}</h1>
             <Badge><Dot tone={iv?.status === "live" ? "good" : "neutral"} pulse={iv?.status === "live"} /> {people.length + 1} in the call</Badge>
+            <div className="relative ml-auto flex items-center gap-2"><CallControls room={lk} tone="light" /></div>
           </div>
           {actionError && <p className="mb-4 rounded-2xl bg-bad/10 px-4 py-3 text-[13px] text-bad">{actionError}</p>}
           {callWarning && <p className="mb-4 rounded-2xl bg-warn/10 px-4 py-3 text-[13px] text-warn">{callWarning}</p>}
           {Object.keys(videos).length === 0 ? (
-            <Card><Empty title="Waiting for participants" text="Share the participant link from your dashboard. Their video appears here." /></Card>
+            <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+              <VideoSlot el={self} label="You" muted className="aspect-video" />
+              <Card className="sm:col-span-1 2xl:col-span-2"><Empty title="Waiting for participants" text="Share the participant link from your dashboard. Their video appears here." /></Card>
+            </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+              <VideoSlot el={self} label="You" muted className="aspect-video" />
               {Object.entries(videos).map(([k, v]) => <VideoSlot key={k} el={v.el} label={v.name} className="aspect-video" />)}
             </div>
           )}

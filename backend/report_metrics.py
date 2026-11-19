@@ -41,6 +41,13 @@ def _mmss(t) -> str | None:
     return f"{int(t // 60):02d}:{int(t % 60):02d}" if _ok(t) else None
 
 
+def has_face(w: dict) -> bool:
+    """A vision window in which a face was seen. Windows without one store zeros for blinks, gaze, iris and head
+    movement ("not measured"), which must not be averaged in. Old rows without the field count as seen."""
+    r = (w.get("features") or {}).get("face_present_ratio")
+    return r is None or (isinstance(r, float) and math.isnan(r)) or r >= 0.5
+
+
 def _lin(v, best: float, worst: float) -> float | None:
     """0-100: 100 at `best`, 0 at `worst`, linear in between (works for either direction)."""
     if not _ok(v):
@@ -88,7 +95,8 @@ def card_details(card: dict, answer: dict, windows: list[dict]) -> dict:
     tm, pr, th, ah = (beh.get(k) or {} for k in ("timing", "prosody", "text_hesitation", "audio_hesitation"))
     ask, end = card.get("ask_s") or 0, card.get("end_s") or (card.get("ask_s") or 0)
     inside = [w for w in windows if w["end_s"] > ask and w["start_s"] < end]
-    feat = lambda k: [w.get("features", {}).get(k) for w in inside]  # noqa: E731
+    face_in = [w for w in inside if has_face(w)]
+    feat = lambda k: [(w.get("features") or {}).get(k) for w in face_in]  # noqa: E731    (no-face windows hold zeros)
     on = _mean([w.get("on_screen_ratio") for w in inside])
     return {
         "long_pauses": tm.get("long_pause_count"), "longest_pause_s": _r(tm.get("longest_pause_s"), 2),
@@ -109,23 +117,31 @@ def card_details(card: dict, answer: dict, windows: list[dict]) -> dict:
 
 # --------------------------------------------------------------------------------------------- sections
 def _eyes(windows: list[dict]) -> tuple[list[dict], dict]:
-    f = lambda k: [w.get("features", {}).get(k) for w in windows]  # noqa: E731
+    # A window with no face stores zeros for blinks, gaze, iris and head movement (nothing could be measured). Averaging
+    # those zeros in would drag every eye metric down, so the per-feature means use windows where a face was seen.
+    seen = [w for w in windows if has_face(w)]
+    f = lambda k: [(w.get("features") or {}).get(k) for w in seen]  # noqa: E731
     on = _mean([w.get("on_screen_ratio") for w in windows])
     on_pct = on * 100 if on is not None else None
     blink = _mean(f("blink_rate_per_min"))
     blink_series = [x for x in f("blink_rate_per_min") if _ok(x)]
+    # Zero blinks across a whole interview is not plausible: the eye tracker lost the blinks (glasses, glare, low light),
+    # so it is reported as "not detected" instead of being rated, and it is left out of the score.
+    blink_lost = blink is not None and len(blink_series) >= 4 and blink < 1.0
     glances = _mean(f("glance_away_count"))
     glances_pm = glances / WIN_S * 60 if glances is not None else None
     gaze_std = _mean(f("gaze_yaw_std_deg"))
     sacc = _mean(f("saccade_rate_hz"))
     iris = _mean(f("iris_movement_std"))
     head = _mean(f("head_yaw_std_deg"))
-    face = _mean(f("face_present_ratio"))
-    reading_w = [w for w in windows if (w.get("features") or {}).get("reading_pattern_flag")]
-    reading_s = len(reading_w) * HOP_S
+    face = _mean([(w.get("features") or {}).get("face_present_ratio") for w in windows])
+    reading_w = [w for w in seen if (w.get("features") or {}).get("reading_pattern_flag")]
+    reading_s = len(reading_w) * HOP_S if windows else None     # no video windows -> nothing was measured
     rows = [
         _row("blink_rate", "Blink rate", _r(blink), "/min", "8-30 in conversation",
-             _status(blink, (8, 30), (5, 40)),
+             "neutral" if blink_lost else _status(blink, (8, 30), (5, 40)),
+             "No blinks were detected, which usually means they could not be tracked (glasses, glare or low light), "
+             "not that the person stared. Not rated." if blink_lost else
              "Much higher than usual often goes with stress or tiredness; very low with staring or reading.",
              extra={"min": _r(min(blink_series)) if blink_series else None,
                     "max": _r(max(blink_series)) if blink_series else None}),
@@ -147,7 +163,7 @@ def _eyes(windows: list[dict]) -> tuple[list[dict], dict]:
         _row("head_movement", "Head movement", _r(head), "° spread", "under 10°", _status(head, 10, 18),
              "Spread of the head turn (yaw) within 5 s windows."),
     ]
-    raw = {"blink": blink, "on_pct": on_pct, "glances_pm": glances_pm, "reading_s": reading_s,
+    raw = {"blink": None if blink_lost else blink, "on_pct": on_pct, "glances_pm": glances_pm, "reading_s": reading_s,
            "first_reading_s": reading_w[0]["start_s"] if reading_w else None}
     return rows, raw
 
@@ -170,7 +186,7 @@ def _voice(cards: list[dict]) -> tuple[list[dict], dict]:
         _row("pace", "Speaking pace", _r(wpm, 0), "wpm", "110-170 words per minute", _status(wpm, (110, 170), (90, 190)), ""),
         _row("expressiveness", "Voice expressiveness", _r(expr, 0), "/100", "50 or more",
              _status(expr, 50, 25, higher_is_better=True), "Pitch variation; low values sound flat or monotone."),
-        _row("voice_breaks", "Voice breaks (cracks)", breaks, "", "6 or fewer per voiced minute",
+        _row("voice_breaks", "Voice breaks (cracks)", breaks if cards else None, "", "6 or fewer per voiced minute",
              _status(br_rate, 6, 15) if breaks else ("good" if cards else "neutral"),
              f"{_r(br_rate)} per voiced minute. Sudden jumps of 7+ semitones between two steady stretches of voice; "
              "usually tension or a dry throat." if br_rate is not None else "",
@@ -197,18 +213,18 @@ def _fluency(cards: list[dict], cand_text: str) -> tuple[list[dict], dict]:
     hes = _mean([c.get("hesitation_index") for c in cards])
     top = ", ".join(f"“{w}” ×{n}" for w, n in list(bd["fillers"].items())[:5])
     rows = [
-        _row("fillers", "Filler words", n_fill, "", "3 or fewer per 100 words", _status(per100(n_fill), 3, 6),
+        _row("fillers", "Filler words", n_fill if nw else None, "", "3 or fewer per 100 words", _status(per100(n_fill), 3, 6),
              f"{_r(per100(n_fill))} per 100 words" + (f": {top}" if top else ""), extra={"breakdown": bd["fillers"]}),
-        _row("crutch", "Overused words", len(bd["crutch_words"]), "", "none",
-             "good" if not bd["crutch_words"] else "watch",
+        _row("crutch", "Overused words", len(bd["crutch_words"]) if nw else None, "", "none",
+             "neutral" if not nw else "good" if not bd["crutch_words"] else "watch",
              ", ".join(f"“{w}” ×{n}" for w, n in bd["crutch_words"].items()) or "No word repeated unusually often.",
              extra={"words": bd["crutch_words"]}),
-        _row("hedges", "Hedging phrases", n_hedge, "", "2 or fewer per 100 words", _status(per100(n_hedge), 2, 4),
+        _row("hedges", "Hedging phrases", n_hedge if nw else None, "", "2 or fewer per 100 words", _status(per100(n_hedge), 2, 4),
              ", ".join(f"“{w}” ×{n}" for w, n in bd["hedges"].items()) or "“I think”, “maybe”, “not sure”, ...",
              extra={"breakdown": bd["hedges"]}),
-        _row("repetitions", "Repeats and restarts", n_rep, "", "2 or fewer per 100 words", _status(per100(n_rep), 2, 4),
+        _row("repetitions", "Repeats and restarts", n_rep if nw else None, "", "2 or fewer per 100 words", _status(per100(n_rep), 2, 4),
              "Repeated words (“I I”) and abandoned sentence starts."),
-        _row("audio_disfluency", "Stretched sounds and blocks", n_audio, "", "2 or fewer per minute",
+        _row("audio_disfluency", "Stretched sounds and blocks", n_audio if minutes else None, "", "2 or fewer per minute",
              _status(n_audio / minutes if minutes else None, 2, 5),
              "Prolongations and blocks heard by the disfluency model (not visible in the transcript)."),
         _row("hesitation", "Hesitation index", _r(hes, 0), "/100", "under 40", _status(hes, 40, 65),
@@ -232,10 +248,11 @@ def _pauses(cards: list[dict]) -> tuple[list[dict], dict]:
         _row("response_delay", "Response delay", _r(mean_lat), "s", "2 s or less", _status(mean_lat, 2, 4),
              f"Longest {worst_lat[0]:.1f} s, on “{(worst_lat[1].get('question') or '')[:60]}”." if worst_lat else "",
              at=worst_lat[1].get("ask_s") if worst_lat else None),
-        _row("long_pauses", "Long pauses (> 1 s)", longs, "", "3 or fewer per minute of answering",
+        _row("long_pauses", "Long pauses (> 1 s)", longs if cards else None, "", "3 or fewer per minute of answering",
              _status(longs / minutes if minutes else None, 3, 6),
              f"{longs / minutes:.1f} per minute of answering." if minutes else ""),
-        _row("very_long_pauses", "Very long pauses (> 3 s)", vlongs, "", "none", _status(vlongs, 0, 2), ""),
+        _row("very_long_pauses", "Very long pauses (> 3 s)", vlongs if cards else None, "", "none",
+             _status(vlongs if cards else None, 0, 2), ""),
         _row("longest_pause", "Longest silence mid-answer", _r(longest["longest_pause_s"]) if longest else None, "s",
              "2.5 s or less", _status(longest["longest_pause_s"] if longest else None, 2.5, 4),
              f"In the answer to “{(longest.get('question') or '')[:60]}”." if longest else "",
@@ -243,7 +260,7 @@ def _pauses(cards: list[dict]) -> tuple[list[dict], dict]:
         _row("pause_ratio", "Silence while answering", _r(ratio * 100 if ratio is not None else None, 0), "%", "25 % or less",
              _status(ratio * 100 if ratio is not None else None, 25, 40), ""),
     ]
-    return rows, {"mean_lat": mean_lat, "longs_pm": longs / minutes if minutes else None, "vlongs": vlongs,
+    return rows, {"mean_lat": mean_lat, "longs_pm": longs / minutes if minutes else None, "vlongs": vlongs if cards else None,
                   "longest": longest, "worst_lat": worst_lat, "ratio": ratio}
 
 
@@ -290,18 +307,24 @@ def scorecard(cards: list[dict], raw: dict) -> dict:
         "eye_contact": (_mean([_lin(re["on_pct"], 85, 40), _lin(re["glances_pm"], 3, 12),
                                _lin(re["reading_s"], 0, 30) if windows_present(re) else None]),
                         "Time on screen, glances away, reading pattern."),
-        "responsiveness": (_mean([_lin(rp["mean_lat"], 1.5, 6), _lin(rp["vlongs"], 0, 4)]),
+        "responsiveness": (_mean([_lin(rp["mean_lat"], 1.5, 6),
+                                  _lin(rp["vlongs"], 0, 4) if rp["mean_lat"] is not None else None]),
                            "Delay before answering, very long silences."),
     }
     out = {k: {"score": _r(v, 0), "weight": WEIGHTS[k], "basis": basis} for k, (v, basis) in dims.items()}
     have = {k: d for k, d in out.items() if d["score"] is not None}
     wsum = sum(d["weight"] for d in have.values())
     overall = sum(d["score"] * d["weight"] for d in have.values()) / wsum if wsum else None
+    note = None
+    if not cards:
+        overall, note = None, "No answers were recorded, so there is nothing to rate yet."
+    elif len(have) < 2 or not any(k in have for k in ("content", "fluency", "delivery", "responsiveness")):
+        overall, note = None, ("Too little was measured to give a fair rating: no speech or answer data was captured.")
     grade = next(((g, word) for cut, g, word in GRADES if overall is not None and overall >= cut), (None, None))
-    best = max(have, key=lambda k: have[k]["score"]) if have else None
-    worst = min(have, key=lambda k: have[k]["score"]) if have else None
+    best = max(have, key=lambda k: have[k]["score"]) if have and overall is not None else None
+    worst = min(have, key=lambda k: have[k]["score"]) if have and overall is not None else None
     return {"dimensions": out, "overall": _r(overall, 0), "grade": grade[0], "grade_word": grade[1],
-            "strongest": best, "weakest": worst if worst != best else None,
+            "strongest": best, "weakest": worst if worst != best else None, "note": note,
             "method": "Weighted mean of the available dimensions (weights renormalised when one is missing). "
                       "A 85+, B 70+, C 55+, D 40+, E below 40. Decision support only."}
 

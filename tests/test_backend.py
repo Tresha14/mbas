@@ -241,3 +241,62 @@ def test_session_platform_and_column_added_to_old_database(tmp_path):
     assert c.post("/api/interviews", json={"title": "x"}, headers=h).json()["platform"] == "interlens"
     assert c.post("/api/interviews", json={"title": "y", "platform": "zoom_app"}, headers=h).json()["platform"] == "zoom_app"
     assert c.post("/api/interviews", json={"title": "z", "platform": "skype"}, headers=h).status_code == 422
+
+
+# ---------------------------------------------------------------------------- reports built from little or no data
+def _data(questions=(), answers=(), windows=()):
+    return {"questions": list(questions), "answers": list(answers), "follow_ups": [], "windows": list(windows),
+            "transcript": [], "speech": [], "flags": []}
+
+
+def _win(t, face=1.0, blink=18.0):
+    return {"start_s": float(t), "end_s": float(t + 5), "attention": 80.0, "engagement": "engaged", "on_screen_ratio": 0.9 * face,
+            "features": {"face_present_ratio": face, "blink_rate_per_min": blink if face else 0.0,
+                         "gaze_yaw_std_deg": 2.0 if face else 0.0, "glance_away_count": 0}}
+
+
+def test_empty_interview_is_not_rated():
+    """Nobody joined: no grade, no invented 100, no invented 'good' rows and no praise in the candidate feedback."""
+    from backend.reports import build_reports
+
+    iv, cv = build_reports(_data())
+    sc = iv["scorecard"]
+    assert sc["overall"] is None and sc["grade"] is None and sc["note"]
+    assert all(d["score"] is None for d in sc["dimensions"].values())
+    rows = {r["key"]: r for s in iv["behaviour"] for r in s["rows"]}
+    for k in ("reading", "voice_breaks", "fillers", "crutch", "hedges", "long_pauses", "very_long_pauses"):
+        assert rows[k]["value"] is None and rows[k]["status"] == "neutral", k
+    assert cv["strengths"] == [] and cv["improvements"] == []
+
+
+def test_video_only_or_silent_answers_are_not_rated():
+    from backend.reports import build_reports
+
+    q = [{"id": 1, "order": 1, "question_id": "Q1", "text": "Tell me about yourself", "category": "hr", "ask_s": 5.0, "end_s": 40.0}]
+    silent = [{"question_ref": 1, "effectiveness": None, "subscores": {}, "answer_model": {}, "behaviour": {}, "reasons": [],
+               "modality_weights": {}, "transcript": ""}]
+    wins = [_win(t) for t in range(0, 50, 5)]
+    for d in (_data(windows=wins), _data(q, silent), _data(q, silent, wins)):
+        iv, cv = build_reports(d)
+        assert iv["scorecard"]["overall"] is None and iv["scorecard"]["grade"] is None
+        assert cv["strengths"] == [] and cv["improvements"] == []      # nothing was said, so nothing to praise or fix
+
+
+def test_windows_without_a_face_are_not_averaged_in_as_zeros():
+    from backend.report_metrics import behaviour_sections
+
+    wins = [_win(t) for t in range(0, 25, 5)] + [_win(t, face=0.0) for t in range(25, 50, 5)]
+    sections, _ = behaviour_sections([], wins, "")
+    rows = {r["key"]: r for s in sections for r in s["rows"]}
+    assert rows["blink_rate"]["value"] == 18.0            # not 9.0 (half zeros)
+    assert rows["gaze_stability"]["value"] == 2.0
+    assert rows["face_visible"]["value"] == 50.0          # visibility itself still counts the empty windows
+
+
+def test_zero_blinks_over_a_whole_interview_is_not_rated():
+    from backend.report_metrics import behaviour_sections
+
+    wins = [_win(t, blink=0.0) for t in range(0, 50, 5)]       # face seen, but the tracker never saw a blink
+    sections, raw = behaviour_sections([], wins, "")
+    row = next(r for s in sections for r in s["rows"] if r["key"] == "blink_rate")
+    assert row["status"] == "neutral" and "could not be tracked" in row["note"] and raw["eyes"]["blink"] is None

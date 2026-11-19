@@ -2,10 +2,11 @@
 
 /* Candidate room: a plain video call. This page never opens the analytics channel and imports nothing from
    lib/analytics - candidates see no scores (the backend also rejects candidate tokens on /ws/analytics). */
-import { Mic, MicOff, MonitorUp, PhoneOff, Video, VideoOff } from "lucide-react";
-import { Track, type Room } from "livekit-client";
+import { MonitorUp, PhoneOff } from "lucide-react";
+import type { Room } from "livekit-client";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { CallControls } from "@/components/call-controls";
 import { Logo, VideoSlot } from "@/components/shell";
 import { Button, cn, Dot, mmss } from "@/components/ui";
 import { api } from "@/lib/api";
@@ -28,8 +29,7 @@ export default function CandidateRoom() {
   const preview = useRef<HTMLVideoElement | null>(null);
   const [remote, setRemote] = useState<HTMLMediaElement | null>(null);
   const [self, setSelf] = useState<HTMLMediaElement | null>(null);
-  const [mic, setMic] = useState(true);
-  const [cam, setCam] = useState(true);
+  const [lk, setLk] = useState<Room | null>(null);      // the live call, for the mic / camera buttons
   const [sharing, setSharing] = useState(false);
   const [ok, setOk] = useState<{ cam: boolean | null; mic: boolean | null }>({ cam: null, mic: null });
   const [level, setLevel] = useState(0);
@@ -92,10 +92,11 @@ export default function CandidateRoom() {
         onWarning: setWarning,
         onConnection: setConn,
         onScreenShareStopped: () => setSharing(false),
+        onLocalCamera: setSelf,
       });
       room.current = r;
+      setLk(r);
       stopPreview.current();            // the call has its own camera/mic now; stop the preview loop
-      setSelf(r.localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack?.attach() ?? null);
       setJoined(true);
       setT0(Date.now());
     } catch (e) {
@@ -156,12 +157,7 @@ export default function CandidateRoom() {
       </div>
       <div className="absolute inset-x-0 bottom-6 flex justify-center">
         <div className="flex items-center gap-3 rounded-full bg-white/5 px-4 py-3 ring-1 ring-white/10 backdrop-blur-xl">
-          <Control on={mic} label={mic ? "Mute" : "Unmute"} onClick={async () => { await room.current?.localParticipant.setMicrophoneEnabled(!mic); setMic(!mic); }}>
-            {mic ? <Mic size={19} /> : <MicOff size={19} />}
-          </Control>
-          <Control on={cam} label={cam ? "Turn camera off" : "Turn camera on"} onClick={async () => { await room.current?.localParticipant.setCameraEnabled(!cam); setCam(!cam); }}>
-            {cam ? <Video size={19} /> : <VideoOff size={19} />}
-          </Control>
+          <CallControls room={lk} tone="dark" />
           <Control on={!sharing} label={sharing ? "Stop sharing" : "Share screen"} onClick={async () => { await room.current?.localParticipant.setScreenShareEnabled(!sharing, { audio: false }); setSharing(!sharing); }}>
             <MonitorUp size={19} />
           </Control>
