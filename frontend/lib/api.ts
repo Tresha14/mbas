@@ -114,6 +114,12 @@ export const api = {
   data: (id: number) => req<InterviewData>("GET", `/api/interviews/${id}/data`),
   buildReport: (id: number) => req<ReportRow>("POST", `/api/interviews/${id}/report`),
   report: (id: number) => req<ReportRow>("GET", `/api/interviews/${id}/report`),
+  /** The interviewer report as a single self-contained HTML file (text). */
+  reportHtml: async (id: number): Promise<string> => {
+    const res = await fetch(`/api/interviews/${id}/report.html`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!res.ok) throw new Error(res.status === 404 ? "Build the report first (press Refresh)." : res.statusText);
+    return res.text();
+  },
   editReport: (id: number, candidate_view: CandidateView) => req<ReportRow>("PUT", `/api/interviews/${id}/report`, { candidate_view }),
   release: (id: number) => req<{ release_token: string; url: string }>("POST", `/api/interviews/${id}/report/release`),
   feedback: (token: string) => req<CandidateView & { title: string; released_at: string }>("GET", `/api/feedback/${token}`, undefined, null),

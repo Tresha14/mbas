@@ -94,14 +94,18 @@ export interface State {
   answers: AnswerMsg[];
   followUps: FollowUpMsg[];
   alerts: { t_s: number; text: string; alert: string }[];
-  questions: { question_ref: number; question_id: string; ask_s: number; end_s: number | null; type: string }[];
+  questions: { question_ref: number; question_id: string; ask_s: number; end_s: number | null; type: string; text?: string; auto?: boolean }[];
   models: Record<string, boolean> | null;
+  health: HealthMsg | null;
   latencyMs: number | null;
 }
 
+export interface MicHealth { db: number | null; silent_s: number; speech_recent: boolean; since_words_s: number | null; listening_s: number }
+export interface HealthMsg { t_s: number; mics: Record<string, MicHealth>; asr: "own" | "whisper" }
+
 const initial: State = {
   connected: false, lines: [], partial: {}, windows: [], gaze: [], speaking: null, speakingHist: [], conversation: null, answers: [],
-  followUps: [], alerts: [], questions: [], models: null, latencyMs: null,
+  followUps: [], alerts: [], questions: [], models: null, health: null, latencyMs: null,
 };
 
 type Msg = Record<string, unknown> & { kind?: string };
@@ -133,6 +137,8 @@ function reduce(s: State, a: { type: "msg"; m: Msg } | { type: "conn"; v: boolea
       return { ...s, alerts: [...s.alerts, m as unknown as State["alerts"][0]].slice(-200) };
     case "question":
       return { ...s, questions: [...s.questions.filter((q) => !(q.question_ref === m.question_ref && m.type === "answer_end" && q.type === "ask")), m as unknown as State["questions"][0]] };
+    case "health":
+      return { ...s, health: m as unknown as HealthMsg };
     case "status":
       return { ...s, models: { ...s.models, ...(m.models as Record<string, boolean>) } };
     default:

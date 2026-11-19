@@ -5,7 +5,7 @@ import { AlertCircle, ArrowDown, ArrowRight, ArrowUp, Eye, EyeOff, Lightbulb, Pa
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { State } from "@/lib/analytics";
 import { toneVsBaseline, NEEDED, progress, useBaseline, type MetricKey, type Sample } from "@/lib/baseline";
-import { Button, Card, cn, Empty, mmss, SectionLabel } from "./ui";
+import { Button, Card, cn, Dot, Empty, mmss, SectionLabel } from "./ui";
 
 type Tone = "good" | "warn" | "bad" | "neutral";
 const toneText: Record<Tone, string> = { good: "text-good", warn: "text-warn", bad: "text-bad", neutral: "text-faint" };
@@ -201,5 +201,43 @@ export function FlaggedMoments({ alerts, onPick }: { alerts: State["alerts"]; on
         );
       })}
     </ul>
+  );
+}
+
+
+/** Is everything the analysis needs actually working? Camera (a face in frame), the candidate's microphone (any sound),
+ *  and the transcript (words coming out when someone speaks). Each chip says what is wrong in plain words. */
+export function SignalHealth({ state }: { state: State }) {
+  const gaze = state.gaze.slice(-15);                          // about 3 s
+  const h = state.health;
+  const cand = h?.mics.candidate;
+  const inter = h?.mics.interviewer;
+
+  const face: [Tone, string] = gaze.length === 0 ? ["neutral", "Waiting for the camera"]
+    : gaze.some((g) => g.face) ? ["good", "Face detected"] : ["bad", "No face in frame: ask the candidate to face the camera"];
+  const mic = (m: typeof cand, who: string): [Tone, string] => !m ? ["neutral", `Waiting for ${who} audio`]
+    : m.listening_s >= 6 && m.silent_s >= 6 ? ["bad", `No sound from ${who} microphone for ${Math.round(m.silent_s)} s: muted or not working`]
+    : ["good", `${who} microphone is live`];
+  const words: [Tone, string] = !cand ? ["neutral", "Waiting for speech"]
+    : cand.speech_recent && (cand.since_words_s == null ? cand.listening_s > 15 : cand.since_words_s > 15)
+      ? ["warn", `Hearing speech but no words for ${Math.round(cand.since_words_s ?? cand.listening_s)} s`]
+      : cand.since_words_s == null ? ["neutral", "No words yet"] : ["good", `Transcript running (${h?.asr === "whisper" ? "Whisper" : "our model"})`];
+  const items: [string, [Tone, string]][] = [["Camera", face], ["Candidate mic", mic(cand, "the candidate's")], ["Transcript", words]];
+  if (inter) items.push(["Your mic", mic(inter, "your")]);
+  const level = cand?.db == null ? 0 : Math.max(0, Math.min(1, (cand.db + 60) / 50));
+
+  return (
+    <div className="flex flex-wrap items-stretch gap-x-6 gap-y-2 rounded-2xl border border-border bg-surface px-4 py-2.5" aria-label="Signal health">
+      {items.map(([label, [tone, text]]) => (
+        <div key={label} className="flex min-w-0 items-center gap-2 text-[13px]" title={text}>
+          <Dot tone={tone} pulse={tone === "bad"} />
+          <span className="text-faint">{label}</span>
+          <span className={cn("truncate", tone === "good" || tone === "neutral" ? "text-muted" : toneText[tone])}>{text}</span>
+          {label === "Candidate mic" && cand?.db != null && (
+            <span className="ml-1 h-1.5 w-14 overflow-hidden rounded-full bg-surface-2" aria-hidden><span className="block h-full bg-accent transition-all" style={{ width: `${level * 100}%` }} /></span>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GazePlot, Signal, TrendChart } from "@/components/charts";
-import { FlaggedMoments, LiveMetrics } from "@/components/live";
+import { FlaggedMoments, LiveMetrics, SignalHealth } from "@/components/live";
 import { ModelList } from "@/components/models";
 import { CallControls } from "@/components/call-controls";
 import { Header, VideoSlot } from "@/components/shell";
@@ -95,6 +95,7 @@ export default function Cockpit() {
   const trend = useMemo(() => state.windows.map((w) => ({ t: w.end_s, attention: w.attention, engaged: w.engagement === "engaged" ? 90 : w.engagement === "neutral" ? 50 : 10 })), [state.windows]);
   const lines = [...state.lines, ...Object.values(state.partial).filter((x): x is Line => !!x)];
   const current = questions.find((q) => asked[q.question_id] === "asking");
+  const heard = [...state.questions].reverse().find((q) => q.type === "ask" && q.auto);     // a question picked up from the interviewer's voice
   const elapsed = iv?.started_at && iv.status === "live" ? (now - new Date(iv.started_at).getTime()) / 1000 : null;
   const recentAlert = state.alerts.length ? state.alerts[state.alerts.length - 1] : null;
   const showAlert = recentAlert && elapsed != null && elapsed - recentAlert.t_s < 6;
@@ -255,6 +256,8 @@ export default function Cockpit() {
             </AnimatePresence>
           </div>
 
+          {iv?.status === "live" && <SignalHealth state={state} />}
+
           <LiveMetrics state={state} id={id} />
 
           <Card className="p-0">
@@ -319,6 +322,12 @@ export default function Cockpit() {
                     <p className="text-[11px] tracking-wider text-accent uppercase">Now asking · {current.category}</p>
                     <p className="mt-1.5 font-display text-lg leading-snug">{current.text}</p>
                     <Button className="mt-4 w-full" onClick={endAnswer}><Check size={15} /> Answer ended</Button>
+                  </div>
+                ) : heard && iv?.status === "live" ? (
+                  <div className="mb-5 rounded-2xl bg-accent-soft p-4">
+                    <p className="text-[11px] tracking-wider text-accent uppercase">Heard a question</p>
+                    <p className="mt-1.5 font-display text-lg leading-snug">{heard.text}</p>
+                    <p className="mt-2 text-[13px] text-muted">Picked up from the interviewer&apos;s voice. The answer is scored when the next question starts or the interview ends.</p>
                   </div>
                 ) : iv?.status === "ended" ? (
                   <p className="mb-5 rounded-2xl bg-surface-2 px-4 py-3 text-[13px] text-muted">This interview has ended. The report has the full picture.</p>

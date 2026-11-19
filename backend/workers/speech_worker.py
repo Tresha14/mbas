@@ -33,6 +33,7 @@ from ml.behaviour.text_hesitation import FILLERS, HEDGES, count_phrases, filler_
 SR = 16000
 FRAME = 160
 SILENCE_DB = -52.0           # absolute floor under the VAD (dBFS per 10 ms frame)
+SOUND_DB = -55.0             # a chunk louder than this means the microphone is alive (room noise is about -60 .. -50)
 
 
 class ChunkVAD:
@@ -63,6 +64,12 @@ class Track:
     finals: list[dict] = field(default_factory=list)
     asr_anchored: bool = False                    # StreamingASR clock set to the first chunk's session time
     conf: list[tuple[float, float]] = field(default_factory=list)          # (t_s, mean max-prob) per final
+    # signal health (what the cockpit shows: is this microphone alive, is it hearing speech, are words coming out)
+    first_t: float | None = None
+    level_db: float | None = None                 # smoothed loudness of the last chunks, dBFS
+    last_sound_t: float | None = None             # last chunk louder than SOUND_DB
+    last_speech_t: float | None = None            # last chunk the VAD called speech
+    last_final_t: float | None = None             # when the last recognised words ended
 
     def clip(self, t0: float, t1: float) -> np.ndarray:
         n = int(round((t1 - t0) * SR))
@@ -87,12 +94,20 @@ class Track:
 
 
 class InterviewSpeech:
-    def __init__(self, interview_id: int, mode: str, bus, db, models: Models):
+    def __init__(self, interview_id: int, mode: str, bus, db, models: Models, platform: str | None = None):
         self.id, self.mode, self.bus, self.db, self.m = interview_id, mode, bus, db, models
         self.tracks: dict[str, Track] = {}
         self.next_speaking, self.next_conv = 5.0, 10.0
+        self.next_health = 0.0
         self.in_pause = False
         self.questions: dict[int, dict] = {}
+        self.platform = platform or "interlens"
+        a = settings().auto_questions
+        # questions found in the interviewer's voice: on for interviews held on Meet / Zoom / Teams (where nobody clicks
+        # Ask), off in our own room (the interviewer picks from the list) unless MBAS_AUTO_QUESTIONS=on
+        self.auto_questions = mode == "interview" and (a == "on" or (a == "auto" and self.platform != "interlens"))
+        self.open_q: dict | None = None          # the question being answered right now (asked by click or by voice)
+        self.last_click_ask_t = -1e9             # session time of the latest question asked by a click
         bus.publish(f"analytics:{self.id}", {"kind": "status", "models": {
             "vad": models.vad is not None, "asr": getattr(models, "asr_ready", models.asr is not None), "asr_pretrained": getattr(models, "asr_backend", "own") == "whisper", "disfluency": models.disfluency is not None,
             "answer_quality": models.answer is not None, "fusion": models.fusion is not None}})
@@ -136,6 +151,13 @@ class InterviewSpeech:
         else:   # energy fallback until the VAD is trained
             sp = frame_db > -45
         tr.vad_ctx = x[-8000:]
+        db = 10 * np.log10(float((x ** 2).mean()) + 1e-10)
+        tr.first_t = t0 if tr.first_t is None else tr.first_t
+        tr.level_db = db if tr.level_db is None else 0.6 * tr.level_db + 0.4 * db
+        if db > SOUND_DB:
+            tr.last_sound_t = t0
+        if len(sp) and bool(np.any(sp)):
+            tr.last_speech_t = t0
         f0 = int(round(t0 * 100))
         if len(tr.speech) < f0 + len(sp):
             tr.speech = np.pad(tr.speech, (0, f0 + len(sp) - len(tr.speech)))
@@ -151,6 +173,9 @@ class InterviewSpeech:
             for r in results:
                 self.transcript(name, r, msg)
         now_t = t0 + len(x) / SR
+        if name == "candidate" and now_t >= self.next_health:
+            self.next_health = now_t + 1.0
+            self.publish_health(now_t)
         if name == "candidate":
             self.pause_check(now_t)
         if name == "candidate" and now_t >= self.next_speaking:
@@ -182,12 +207,83 @@ class InterviewSpeech:
         self.bus.publish(f"analytics:{self.id}", out)
         if r.final and r.text:
             tr = self.tracks[name]
+            tr.last_final_t = end
             tr.finals.append({"start_s": start, "end_s": end, "text": r.text, "words": ws})
+            if name == "interviewer" and self.auto_questions:
+                self.auto_question(r.text, start)
             with self.db.session() as s:
                 s.add(TranscriptSegment(interview_id=self.id, speaker=name, start_s=start, end_s=end, text=r.text,
                                         words=ws, fillers=fill))
                 s.commit()
             self.bus.set_metric("e2e_transcript", (time.time() - msg["captured_at"]) * 1000 + 640)
+
+    # ------------------------------------------------------------------ questions found in the interviewer's voice
+    def on_ask(self, ev: dict):
+        """Every question that starts (by click or by voice) becomes the open one."""
+        self.open_q = {k: ev.get(k) for k in ("question_ref", "question_id", "text", "category", "ask_s")}
+        if not ev.get("auto"):
+            self.last_click_ask_t = ev.get("ask_s") or 0.0
+
+    def auto_question(self, text: str, start_s: float):
+        from backend.db import Question
+        from backend.question_detect import extract_question
+
+        q = extract_question(text)
+        if not q:
+            return
+        if start_s - self.last_click_ask_t < 30.0:                 # the interviewer also clicked Ask: do not double up
+            return
+        if self.open_q and start_s - (self.open_q.get("ask_s") or 0.0) < 3.0:     # the same question, said in two pieces
+            return
+        if self.open_q:                                            # a new question ends the previous answer
+            self.end_open(start_s - 0.1)
+        from sqlalchemy import func, select
+
+        with self.db.session() as s:
+            n = s.scalar(select(func.count()).select_from(Question).where(Question.interview_id == self.id)) or 0
+            row = Question(interview_id=self.id, order=n + 1, question_id=f"AUTO{n + 1}", text=q[:300], category="auto", ask_s=round(start_s, 2))
+            s.add(row)
+            s.commit()
+            ev = {"type": "ask", "interview_id": self.id, "question_ref": row.id, "question_id": row.question_id, "text": row.text,
+                  "category": "auto", "ask_s": row.ask_s, "end_s": None, "t_s": row.ask_s, "auto": True}
+        self.on_ask(ev)
+        self.bus.publish("control", ev)
+        self.bus.publish(f"analytics:{self.id}", {"kind": "question", **ev})
+
+    def end_open(self, end_s: float, direct: bool = False):
+        """Close the open question: store its end and queue the answer analysis (through the bus, like a click)."""
+        from backend.db import Question
+
+        q, self.open_q = self.open_q, None
+        if not q or q.get("question_ref") is None:
+            return
+        end_s = max(float(end_s), float(q.get("ask_s") or 0.0) + 0.5)
+        with self.db.session() as s:
+            row = s.get(Question, q["question_ref"])
+            if row is not None and row.end_s is None:
+                row.end_s = round(end_s, 2)
+                s.commit()
+        ev = {"type": "answer_end", "interview_id": self.id, **q, "end_s": round(end_s, 2), "t_s": round(end_s, 2), "auto": True}
+        self.bus.publish(f"analytics:{self.id}", {"kind": "question", **ev})
+        if direct:                                   # the interview is ending: nobody will read a queued message
+            self.answer_end(ev)
+        else:
+            self.bus.publish("control", ev)
+
+    def publish_health(self, now_t: float):
+        """Once a second: is each microphone alive, is it hearing speech, and are words coming out of it?"""
+        mics = {}
+        for name, tr in self.tracks.items():
+            first = tr.first_t if tr.first_t is not None else now_t
+            heard = tr.last_sound_t if tr.last_sound_t is not None else first
+            mics[name] = {
+                "db": None if tr.level_db is None else round(tr.level_db),
+                "silent_s": round(max(0.0, now_t - heard), 1),               # how long nothing louder than room noise
+                "speech_recent": tr.last_speech_t is not None and now_t - tr.last_speech_t < 5.0,
+                "since_words_s": None if tr.last_final_t is None else round(max(0.0, now_t - tr.last_final_t), 1),
+                "listening_s": round(now_t - first, 1)}
+        self.bus.publish(f"analytics:{self.id}", {"kind": "health", "t_s": round(now_t, 1), "mics": mics,
+                                                 "asr": "whisper" if getattr(self.m, "asr_backend", "own") == "whisper" else "own"})
 
     def speaking(self, tr: Track, t: float):
         win = 30.0
@@ -399,14 +495,21 @@ def handle(name, msg, binary, bus, db, models, live, cursors, mid: str | None = 
                 cursors.pop(k)
             for role in ("candidate", "interviewer"):
                 cursors[f"audio:{iid}:{role}"] = mid or bus.last_id(f"audio:{iid}:{role}")
-            live[iid] = InterviewSpeech(iid, msg.get("mode", "interview"), bus, db, models)
+            live[iid] = InterviewSpeech(iid, msg.get("mode", "interview"), bus, db, models, platform=msg.get("platform"))
+        elif msg["type"] == "ask" and iid in live:
+            if not msg.get("auto"):
+                live[iid].on_ask(msg)
         elif msg["type"] == "answer_end" and iid in live:
+            if live[iid].open_q and live[iid].open_q.get("question_ref") == msg.get("question_ref"):
+                live[iid].open_q = None
             live[iid].answer_end(msg)
         elif msg["type"] == "stop" and iid in live:
             for t in live[iid].tracks.values():
                 if t.asr is not None:
                     for r in t.asr.flush():
                         live[iid].transcript(t.name, r, {"captured_at": time.time()})
+            if live[iid].open_q:        # the interview ended mid-answer: analyse it too
+                live[iid].end_open(msg.get("t_s") or live[iid].open_q.get("ask_s") or 0.0, direct=True)
             live.pop(iid)
     elif name.startswith("audio:") and binary is not None:
         _, iid, role = name.split(":", 2)

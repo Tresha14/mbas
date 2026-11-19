@@ -233,6 +233,14 @@ export default function Report() {
         <div className="no-print flex gap-1">
           <Button variant="ghost" size="sm" onClick={() => load(true)}><RefreshCw size={14} /> Refresh</Button>
           <Button variant="ghost" size="sm" onClick={() => window.print()}><Download size={14} /> PDF</Button>
+          <Button variant="ghost" size="sm" onClick={async () => {
+            try {
+              const html = await api.reportHtml(id);
+              const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+              const link = Object.assign(document.createElement("a"), { href: url, download: `interlens-report-${id}.html` });
+              document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+            } catch (e) { setActionError((e as Error).message); }
+          }}><Download size={14} /> HTML</Button>
         </div>} />
       <main className="mx-auto max-w-4xl px-6 py-12">
         <p className="text-[13px] text-muted">{data?.interview.title}{date ? ` · ${date}` : ""}</p>

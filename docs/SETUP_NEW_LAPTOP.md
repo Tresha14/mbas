@@ -112,3 +112,14 @@ window prints the address) and allow TCP 8444 and UDP 7882 in Windows Firewall o
 | "model not trained" / preflight FAIL on a checkpoint | Extract the v2 models zip into the `mbas` folder |
 | Port already in use (5442, 6389, 7880, 3020, 8020) | Close the other program, or `docker compose down` and start again |
 | Workers window shows an error | Run `.\.venv\Scripts\python -m tools.preflight` and fix what it reports |
+
+## Things the cockpit now does for you
+
+- **Signal health row** (while the interview is live): camera (a face in frame), the candidate's microphone (any sound),
+  your microphone, and the transcript (words coming out when someone speaks). A red or amber chip says what is wrong,
+  for example "No sound from the candidate's microphone for 12 s: muted or not working".
+- **Automatic questions** for interviews held on Meet, Zoom or Teams: when you speak a question, it is picked up from your
+  microphone and the candidate's answer is scored when the next question starts or the interview ends. In our own room
+  you still pick questions from the list (set `MBAS_AUTO_QUESTIONS=on` in `.env` to use voice detection there too).
+- **HTML report**: the report page has an "HTML" button that downloads the interviewer report as one file you can email
+  or keep (it contains scores, so do not send it to the candidate).

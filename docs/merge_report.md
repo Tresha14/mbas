@@ -1,8 +1,8 @@
 # Merge report: older project (`minor_project`) vs this project
 
 Read-only comparison made on 2026-11-19. Nothing in `minor_project` was changed. Ported so far: combined flags,
-human-rating validation and the optional Whisper recogniser (marked Done below). Automatic question detection, the HTML
-report and MediaPipe are still open.
+human-rating validation, the optional Whisper recogniser, automatic question detection and the HTML report (marked Done
+below). MediaPipe face tracking is still open.
 
 ## The two projects in one paragraph
 
@@ -18,9 +18,9 @@ scorecard, candidate feedback release, and 87 tests. This project is the base; t
 | # | Feature (older project file) | In this project? | Value | Effort / risk | Recommendation |
 |---|---|---|---|---|---|
 | 1 | **Combined flags**: a moment is flagged only when several signals get worse together (pause + hedging + looking away), judged against the speaker's own median baseline (`analyzer/flags.py`) | No. We flag single events (look away, long pause), which is noisy | High for the report: fewer, better "moments to review" | Low-medium: pure functions, no new dependencies, testable | **Done**: `backend/combined_flags.py`, shown on the report Overview |
-| 2 | **Automatic question detection** from the interviewer's speech (`question_detector.py`, `questions.extract_question_text`) | No. The interviewer clicks Ask and Answer ended every time | High for Meet / Zoom / Teams calls, where questions are free-form | Medium: needs the interviewer track in the speech worker and a way to create the question; risk of false questions | **Port behind a switch, off by default**; do after the demo |
+| 2 | **Automatic question detection** from the interviewer's speech (`question_detector.py`, `questions.extract_question_text`) | No. The interviewer clicks Ask and Answer ended every time | High for Meet / Zoom / Teams calls, where questions are free-form | Medium: needs the interviewer track in the speech worker and a way to create the question; risk of false questions | **Done**: `backend/question_detect.py` + speech worker. Automatic for Meet / Zoom / Teams interviews, off in our own room unless `MBAS_AUTO_QUESTIONS=on` |
 | 3 | **Validation against human ratings**: rater agreement and system-vs-human correlation (`evaluation/statistics.py`, `validation.py`, `ratings_template.csv`) | Partly: `tools/agreement.py` covers label agreement; there is no system-vs-human correlation | High for the viva ("does the score match people?") | Low: standalone script | **Done**: `tools/validate_ratings.py`, see `docs/validation_with_human_ratings.md` |
-| 4 | **Self-contained HTML report** to download (`analyzer/report.py`) | No. We have a PDF print only | Medium: easy to send or archive | Low-medium | Port if time allows |
+| 4 | **Self-contained HTML report** to download (`analyzer/report.py`) | No. We have a PDF print only | Medium: easy to send or archive | Low-medium | **Done**: "HTML" button on the report, `backend/report_html.py` |
 | 5 | **Whisper speech recognition** as an alternative to our own ASR | No (own ASR, WER 0.137 on LibriSpeech, visible spelling errors on unusual voices) | High for transcript quality | High: new dependency, CUDA or CPU speed, different streaming design, and it is a pre-trained model | **Done as an optional backend** (`MBAS_ASR=whisper`, off by default): see `docs/pretrained_models.md` |
 | 6 | **MediaPipe face landmarks and blendshapes** (blink, gaze) | No. Our blink detector loses blinks for people wearing glasses | Medium: would fix blink readings | High: new dependency and a second vision path | **Not now**; same rule as 5 |
 | 7 | OBS-free **window capture** (`windows-capture`) | Replaced by browser screen capture ("External call") | Low | n/a | **Skip** |

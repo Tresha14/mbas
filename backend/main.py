@@ -233,7 +233,7 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
             iv.status, iv.started_at = "live", dt.datetime.now(dt.timezone.utc)
             s.commit()
             bus.publish("control", {"type": "start", "interview_id": iv.id, "room": iv.room, "mode": iv.mode,
-                                    "started_at": iv.started_at.timestamp()})
+                                    "platform": getattr(iv, "platform", "interlens"), "started_at": iv.started_at.timestamp()})
             return _iv(iv, cfg)
 
     @app.post("/api/interviews/{interview_id}/stop")
@@ -314,6 +314,21 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
             if r is None:
                 raise HTTPException(404, "no report yet: POST to build it")
             return row_dict(r)
+
+    @app.get("/api/interviews/{interview_id}/report.html")
+    def download_report_html(interview_id: int, c: dict = Depends(host)):
+        """The interviewer report as one self-contained HTML file."""
+        from fastapi.responses import HTMLResponse
+
+        from backend.report_html import render_report_html
+
+        with db.session() as s:
+            iv = own(s, interview_id, c)
+            r = s.scalar(select(Report).where(Report.interview_id == interview_id))
+            if r is None:
+                raise HTTPException(404, "no report yet: build it first")
+            page = render_report_html({"title": iv.title, "candidate_name": iv.candidate_name}, r.interviewer_view or {})
+        return HTMLResponse(page, headers={"Content-Disposition": f'attachment; filename="interlens-report-{interview_id}.html"'})
 
     @app.put("/api/interviews/{interview_id}/report")
     def edit_report(interview_id: int, body: ReportEditIn, c: dict = Depends(host)):
