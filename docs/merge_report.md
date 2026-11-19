@@ -1,8 +1,8 @@
 # Merge report: older project (`minor_project`) vs this project
 
 Read-only comparison made on 2026-11-19. Nothing in `minor_project` was changed. Ported so far: combined flags,
-human-rating validation, the optional Whisper recogniser, automatic question detection and the HTML report (marked Done
-below). MediaPipe face tracking is still open.
+human-rating validation, the optional Whisper recogniser, automatic question detection, the HTML report and optional
+MediaPipe face tracking (all marked Done below).
 
 ## The two projects in one paragraph
 
@@ -22,7 +22,7 @@ scorecard, candidate feedback release, and 87 tests. This project is the base; t
 | 3 | **Validation against human ratings**: rater agreement and system-vs-human correlation (`evaluation/statistics.py`, `validation.py`, `ratings_template.csv`) | Partly: `tools/agreement.py` covers label agreement; there is no system-vs-human correlation | High for the viva ("does the score match people?") | Low: standalone script | **Done**: `tools/validate_ratings.py`, see `docs/validation_with_human_ratings.md` |
 | 4 | **Self-contained HTML report** to download (`analyzer/report.py`) | No. We have a PDF print only | Medium: easy to send or archive | Low-medium | **Done**: "HTML" button on the report, `backend/report_html.py` |
 | 5 | **Whisper speech recognition** as an alternative to our own ASR | No (own ASR, WER 0.137 on LibriSpeech, visible spelling errors on unusual voices) | High for transcript quality | High: new dependency, CUDA or CPU speed, different streaming design, and it is a pre-trained model | **Done as an optional backend** (`MBAS_ASR=whisper`, off by default): see `docs/pretrained_models.md` |
-| 6 | **MediaPipe face landmarks and blendshapes** (blink, gaze) | No. Our blink detector loses blinks for people wearing glasses | Medium: would fix blink readings | High: new dependency and a second vision path | **Not now**; same rule as 5 |
+| 6 | **MediaPipe face landmarks and blendshapes** (blink, gaze) | No. Our blink detector loses blinks for people wearing glasses | Medium: would fix blink readings | High: new dependency and a second vision path | **Done as an optional backend** (`MBAS_FACE=mediapipe`, off by default): see `docs/pretrained_models.md` |
 | 7 | OBS-free **window capture** (`windows-capture`) | Replaced by browser screen capture ("External call") | Low | n/a | **Skip** |
 | 8 | Streamlit UI, SQLite event log, rule-only fusion, coaching tips | Replaced by the Next.js app, Postgres and our trained fusion / tips | None | n/a | **Skip** |
 | 9 | Documents: `PROJECT_REPORT.md`, `TESTING_GUIDE.md`, synopsis, slides | We have `docs/project_report_outline.md`, `docs/viva_deck_outline.md`, `docs/demo_script.md` | Medium: text and testing steps can be reused | Low, but they describe the older architecture | Reuse selectively, rewrite for this architecture |
