@@ -552,7 +552,7 @@ class InterviewSpeech:
         if any(w["features"].get("reading_pattern_flag") for w in wins):
             out.append(("attention_drop", "eye movements looked like reading from another screen"))
         if ans and ans["relevance"] < 0.4:
-            out.append(("topic_not_covered", f"answer relevance {ans['relevance']:.2f}"))
+            out.append(("topic_not_covered", f"answer relevance {ans['relevance']:.2f} (experimental: the model was trained on synthetic answers)"))
         return out
 
 

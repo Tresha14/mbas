@@ -191,11 +191,10 @@ def candidate_feedback(cards: list[dict], windows: list[dict]) -> dict:
             issues.append((1.2, "structure", f"The answer at {_mmss(c['ask_s'] or 0)} did not clearly cover "
                                              f"{', '.join(missing)} (STAR).", c))
             break
-    low_rel = [c for c in cards if (c.get("answer_model") or {}).get("relevance", 1) < 0.5]
-    if low_rel:
-        c = low_rel[0]
-        issues.append((1.5, "relevance", f"Part of the question at {_mmss(c['ask_s'] or 0)} ('{(c['question'] or '')[:60]}') "
-                                         "was not addressed.", c))
+    # The candidate's feedback is not built from the answer-relevance model: it was trained on synthetic answers and reads very low
+    # on real spoken answers (0.04 on an on-topic answer to a bank question), so "part of the question was not addressed" or
+    # "you stayed on topic" would be a claim about the candidate that the model cannot back. The interviewer still sees it,
+    # labelled experimental.
     on = [w["features"].get("on_screen_ratio") for w in windows if w.get("features") and w["features"].get("on_screen_ratio") is not None]
     if on and np.mean(on) < 0.6:
         issues.append((1.0, "eye_contact", f"You looked away from the screen for about {100 - 100 * np.mean(on):.0f}% "
@@ -209,9 +208,6 @@ def candidate_feedback(cards: list[dict], windows: list[dict]) -> dict:
     if good:
         best = max(good, key=lambda c: c["effectiveness"])
         strengths.append(f"Your answer to '{(best['question'] or '')[:60]}' was clear and well organised.")
-    rel = [c["answer_model"].get("relevance") for c in cards if (c.get("answer_model") or {}).get("relevance") is not None]
-    if rel and np.mean(rel) >= 0.7:
-        strengths.append("You stayed on topic and answered what was asked.")
 
     issues.sort(key=lambda t: -t[0])
     seen, areas = set(), []

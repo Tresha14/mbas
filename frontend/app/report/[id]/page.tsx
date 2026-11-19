@@ -388,7 +388,7 @@ export default function Report() {
                   <p className="text-xs text-faint">
                     {[c.speaking_pattern, c.response_latency_s != null && `${c.response_latency_s.toFixed(1)} s to start`,
                       c.hesitation_index != null && `hesitation ${Math.round(c.hesitation_index)}`,
-                      c.answer_model.relevance != null && `relevance ${c.answer_model.relevance.toFixed(2)}`].filter(Boolean).join(" · ")}
+                      c.answer_model.relevance != null && `relevance ${c.answer_model.relevance.toFixed(2)} (experimental)`].filter(Boolean).join(" · ")}
                   </p>
                   <div className="grid gap-x-8 gap-y-1 text-[13px] text-muted sm:grid-cols-2">
                     {c.longest_pause_s != null && <p>Longest pause <b className="font-medium text-fg">{c.longest_pause_s.toFixed(1)} s</b>{c.long_pauses ? ` · ${c.long_pauses} over 1 s` : ""}</p>}

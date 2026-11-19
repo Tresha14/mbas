@@ -245,3 +245,15 @@ def test_the_answer_model_abstains_on_free_form_questions(env, monkeypatch):
         stored = {a.question_ref: a.answer_model for a in s.scalars(select(AnswerScore).where(AnswerScore.interview_id == iv["id"]))}
     assert stored[refs[0]] == {} and stored[refs[1]]["relevance"] == 0.9
     assert not [m for m in bus.history(f"analytics:{iv['id']}") if m.get("kind") == "follow_up" and m.get("reason") == "topic_not_covered"]
+
+
+def test_the_candidates_feedback_is_not_built_from_the_relevance_model():
+    from backend.reports import candidate_feedback
+
+    cards = [{"question": "Why do you want to join our company?", "category": "hr", "ask_s": 160.0, "response_latency_s": 1.0, "fillers": 0,
+              "transcript": " ".join(["word"] * 60), "answer_model": {"relevance": 0.04}, "effectiveness": 52.0, "wpm": 130},
+             {"question": "Tell me about yourself", "category": "hr", "ask_s": 75.0, "response_latency_s": 1.0, "fillers": 0,
+              "transcript": " ".join(["word"] * 60), "answer_model": {"relevance": 0.95}, "effectiveness": 52.0, "wpm": 130}]
+    fb = candidate_feedback(cards, [])
+    text = " ".join(i["observation"] for i in fb["improvements"]) + " ".join(fb["strengths"])
+    assert "not addressed" not in text and "stayed on topic" not in text

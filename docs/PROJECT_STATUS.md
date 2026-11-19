@@ -164,3 +164,7 @@ Start everything with `.\tasks.ps1 start-all` (needs Docker Desktop running), th
   scored 0.10). A question clicked from the list, or heard from the interviewer and clearly matched to a bank question
   (`backend/question_bank.py`), is scored. A free-form question gets no relevance score, no "topic not covered" follow-up and no such
   line in the candidate feedback; its effectiveness comes from delivery and vision only.
+- **Answer relevance is experimental, even for bank questions.** The model was trained on synthetic (templated) answers; on a real
+  recording it scored an on-topic answer to "Why do you want to join our company?" at 0.04. It is labelled "experimental" for the
+  interviewer, and it is NOT used in the feedback written for the candidate (no "part of the question was not addressed" and no
+  "you stayed on topic"). Validating it needs real answers rated by people (`tools/validate_ratings.py`).

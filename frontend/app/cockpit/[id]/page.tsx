@@ -374,7 +374,7 @@ export default function Cockpit() {
                           {a.behaviour.speaking_pattern ?? ""} · {a.behaviour.response_latency_s?.toFixed(1)} s to start · {a.behaviour.fillers} fillers
                           {a.behaviour.longest_pause_s ? ` · longest pause ${a.behaviour.longest_pause_s.toFixed(1)} s` : ""}
                           {a.behaviour.voice_breaks ? ` · ${a.behaviour.voice_breaks} voice break${a.behaviour.voice_breaks > 1 ? "s" : ""}` : ""}
-                          {a.answer_model ? ` · relevance ${a.answer_model.relevance.toFixed(2)}` : ""}
+                          {a.answer_model ? ` · relevance ${a.answer_model.relevance.toFixed(2)} (experimental)` : ""}
                         </p>
                         {(() => {
                           const q = quadrant(a);
