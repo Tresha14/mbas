@@ -46,6 +46,9 @@ class Settings:
     # small.en reads real voices clearly better than base.en and is about 3x slower (needs a 480 MB download once)
     whisper_model_candidate: str = field(default_factory=lambda: os.environ.get("MBAS_WHISPER_MODEL_CANDIDATE", "").strip())
     whisper_model: str = field(default_factory=lambda: os.environ.get("MBAS_WHISPER_MODEL", "base.en").strip())
+    # where Whisper runs: auto (the NVIDIA GPU when it works, else the CPU) | cuda | cpu. On the GPU it no longer competes
+    # with the browser for the CPU, which is what made the live transcript minutes late on a busy laptop.
+    whisper_device: str = field(default_factory=lambda: os.environ.get("MBAS_WHISPER_DEVICE", "auto").strip().lower())
 
 
 def settings() -> Settings:

@@ -30,14 +30,14 @@ from backend.inference import Models, Timer
 from ml.behaviour.answer_behaviour import answer_behaviour
 from ml.behaviour.conversation import analyse
 from ml.behaviour.pauses import question_end, segments
-from ml.behaviour.text_hesitation import FILLERS, HEDGES, count_phrases, filler_count, words as split_words
+from ml.behaviour.text_hesitation import HEDGES, count_phrases, filler_count, filler_indices, words as split_words
 
 SR = 16000
 FRAME = 160
 # Answer analysis takes about 10 s (the disfluency model alone 6 s). It runs on its own thread so the audio loop keeps
 # reading: a loop that blocks for 10 s on every question falls behind real time and loses the end of the interview.
 _ANALYSIS = ThreadPoolExecutor(max_workers=1, thread_name_prefix="answer-analysis")
-TEXT_WIN_S, TEXT_MIN_WORDS = 60.0, 8       # filler / hedge rates: the last minute of words, from 8 words on
+TEXT_WORDS, TEXT_MIN_WORDS = 150, 8         # filler / hedge rates: the candidate's latest 150 words, from 8 words on
 SILENCE_DB = -52.0           # absolute floor under the VAD (dBFS per 10 ms frame)
 SOUND_DB = -55.0             # a chunk louder than this means the microphone is alive (room noise is about -60 .. -50)
 
@@ -116,6 +116,7 @@ class InterviewSpeech:
         except Exception:  # noqa: BLE001 - a missing row or database must not stop the worker
             pass
         self.in_pause = False
+        self.stopping = False                    # set at the stop message: later work is done directly, not via the bus
         self.questions: dict[int, dict] = {}
         self.platform = platform or "interlens"
         a = settings().auto_questions
@@ -224,7 +225,7 @@ class InterviewSpeech:
         if not r.text and not r.final:
             return
         ws = r.words
-        fill = [i for i, w in enumerate(ws) if w["word"].lower() in FILLERS]
+        fill = filler_indices([w["word"] for w in ws])   # Whisper writes "Uh," / "Mm.": punctuation must not hide a filler
         start = ws[0]["start_s"] if ws else r.t_s
         end = ws[-1]["end_s"] if ws else r.t_s
         if r.final and r.text and self.is_leak(name, r.text, start, end):
@@ -311,7 +312,7 @@ class InterviewSpeech:
                 s.commit()
         ev = {"type": "answer_end", "interview_id": self.id, **q, "end_s": round(end_s, 2), "t_s": round(end_s, 2), "auto": True}
         self.bus.publish(f"analytics:{self.id}", {"kind": "question", **ev})
-        if direct:                                   # the interview is ending: nobody will read a queued message
+        if direct or self.stopping:                  # the interview is ending: nobody will read a queued message
             submit_answer(self, ev)
         else:
             self.bus.publish("control", ev)
@@ -379,8 +380,13 @@ class InterviewSpeech:
     def speaking(self, tr: Track, t: float):
         win = 30.0
         sp = tr.speech_between(max(0, t - win), t)
-        words = sum(len(f["text"].split()) for f in tr.finals if f["end_s"] > t - win)
-        speech_s = sp.sum() / 100
+        # Words arrive seconds (on a busy computer, minutes) after they were spoken. Counting only words whose time lies in
+        # the last 30 / 60 s of AUDIO therefore finds none and every rate stays empty. Instead: pace over the 30 s that end
+        # with the latest recognised words, and filler / hedge rates over the latest words, however late they came.
+        ref = max((f["end_s"] for f in tr.finals), default=None)
+        recent = [f for f in tr.finals if ref is not None and f["end_s"] > ref - win]
+        words = sum(len(split_words(f["text"])) for f in recent)
+        speech_s = (tr.speech_between(max(0, ref - win), ref).sum() / 100) if recent else 0.0
         x = tr.clip(max(0, t - 10), t)
         pitch_var = None
         if len(x) > SR:
@@ -390,8 +396,8 @@ class InterviewSpeech:
             v = f0[~np.isnan(f0)]
             if len(v) > 10:
                 pitch_var = float(np.std(12 * np.log2(v / np.median(v))))
-        text = " ".join(f["text"] for f in tr.finals if f["end_s"] > t - TEXT_WIN_S)     # a minute of words: 30 s rarely has enough
-        ws = split_words(text)
+        ws = split_words(" ".join(f["text"] for f in tr.finals))[-TEXT_WORDS:]
+        text = " ".join(ws)
         per100 = (lambda n: round(100 * n / len(ws), 1)) if len(ws) >= TEXT_MIN_WORDS else (lambda n: None)
         msg = {
             "kind": "speaking", "t_s": t, "wpm": round(60 * words / speech_s, 1) if speech_s > 3 and words > 0 else None,   # no words = no transcript yet (ASR missing), not "0 wpm"
@@ -567,7 +573,8 @@ def run(bus=None, db=None, stop=lambda: False):
         getattr(models, m)
     if models.asr_backend == "whisper":
         cand = settings().whisper_model_candidate or settings().whisper_model
-        print(f"[speech] recogniser: Whisper (pre-trained): candidate {cand}, interviewer {settings().whisper_model}", flush=True)
+        print(f"[speech] recogniser: Whisper (pre-trained) on the {models.whisper_device.upper()}: candidate {cand}, "
+              f"interviewer {settings().whisper_model}", flush=True)
     else:
         print("[speech] recogniser: our own ASR", flush=True)
     live: dict[int, InterviewSpeech] = {}
@@ -643,6 +650,9 @@ def handle(name, msg, binary, bus, db, models, live, cursors, mid: str | None = 
                 live[iid].open_q = None
             submit_answer(live[iid], msg)
         elif msg["type"] == "stop" and iid in live:
+            # From here on, a question found in the last words closes the previous one with a direct analysis: an
+            # answer_end sent through the bus now would arrive after the interview is gone and never be analysed.
+            live[iid].stopping = True
             drain_audio(bus, live, cursors, iid)           # audio that was still queued when the stop arrived
             for t in live[iid].tracks.values():
                 if t.asr is not None:

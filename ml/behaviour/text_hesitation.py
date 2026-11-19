@@ -11,7 +11,8 @@ MULTI_FILLERS = ["you know", "i mean", "sort of", "kind of", "what to say"]
 HEDGES = ["i think", "maybe", "not sure", "i guess", "probably", "perhaps", "i believe", "might be", "kind of",
           "sort of", "i am not sure", "i'm not sure", "not completely sure", "it depends",
           "i suppose", "i feel like", "i would say", "something like that", "or something", "if i am not wrong",
-          "if i'm not wrong", "if i'm not mistaken", "to some extent", "more or less"]
+          "if i'm not wrong", "if i'm not mistaken", "to some extent", "more or less", "i can say", "not too sure",
+          "not really sure", "i'd say", "somewhat", "i would think", "i'm not too sure"]
 CORRECTIONS = ["i mean", "sorry", "no wait", "rather", "or rather", "let me rephrase", "actually no"]
 _WORD = re.compile(r"[a-z']+")
 
@@ -25,17 +26,24 @@ def count_phrases(text: str, phrases: list[str]) -> int:
     return sum(t.count(f" {p} ") for p in phrases)
 
 
-def filler_tokens(ws: list[str]) -> list[str]:
-    """Single-word fillers in order; 'like'/'actually'/'basically' count only when not used as content words."""
+def filler_indices(ws: list[str]) -> list[int]:
+    """Positions of single-word fillers; 'like'/'actually'/'basically' count only when not used as content words.
+    Each word may carry punctuation or capitals as the recogniser wrote it ("Uh,", "Mm."): it is normalised first."""
+    ws = [" ".join(words(w)) for w in ws]
     out = []
     for i, w in enumerate(ws):
         if w in ("um", "uh", "umm", "uhh", "er", "erm", "ah", "hmm", "hm", "mm", "matlab", "achha", "acha"):
-            out.append(w)
+            out.append(i)
         elif w in ("basically", "actually") and (i == 0 or ws[i - 1] in FILLERS or i + 1 < len(ws) and ws[i + 1] in ("i", "we", "it", "the")):
-            out.append(w)
+            out.append(i)
         elif w == "like" and i > 0 and ws[i - 1] not in ("would", "i", "you", "we", "they", "looks", "feel", "something"):
-            out.append(w)
+            out.append(i)
     return out
+
+
+def filler_tokens(ws: list[str]) -> list[str]:
+    """Single-word fillers in order (see filler_indices)."""
+    return [ws[i] for i in filler_indices(ws)]
 
 
 def filler_count(ws: list[str], text: str) -> int:

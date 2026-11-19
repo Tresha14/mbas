@@ -143,8 +143,67 @@ def test_filler_and_hedge_rates_exist_from_a_few_sentences():
 
 
 def test_common_spoken_hedges_are_counted():
-    for t in ("I suppose it is fine.", "It was, something like that.", "If I am not wrong, yes.", "I would say more or less."):
+    for t in ("I suppose it is fine.", "It was, something like that.", "If I am not wrong, yes.", "I would say more or less.",
+              "It's the most booming, I can say.", "I'm not too sure about that."):
         assert count_phrases(t, HEDGES) >= 1, t
+
+
+def _db_with_interview():
+    from backend.db import Interview, User
+
+    db = Database("sqlite://")
+    with db.session() as s:
+        s.add(User(id=1, email="t@x", name="t", role="interviewer", password_hash="x"))
+        s.commit()
+        s.add(Interview(id=1, owner_id=1, title="t", room="r1", invite_token="tok1"))
+        s.commit()
+    return db
+
+
+def test_fillers_written_with_punctuation_are_highlighted():
+    """Whisper writes 'Uh,' and 'Mm.': the live transcript must still mark them (interview 66 marked none)."""
+    from ml.behaviour.text_hesitation import filler_indices
+
+    assert filler_indices(["So,", "uh,", "can", "you", "Um.", "Mm."]) == [1, 4, 5]
+    bus = MemoryBus()
+    sp = InterviewSpeech(1, "interview", bus, _db_with_interview(), _Models())
+    sp.track("candidate")
+    words = [{"word": w, "start_s": 1.0 + i, "end_s": 1.5 + i} for i, w in enumerate(["So,", "uh,", "I", "think,", "um,", "yes."])]
+    sp.transcript("candidate", NS(text="So, uh, I think, um, yes.", final=True, words=words, t_s=7.0), {"captured_at": time.time()})
+    line = [m for m in bus.history("analytics:1") if m.get("kind") == "transcript"][-1]
+    assert line["fillers"] == [1, 4]
+
+
+def test_rates_exist_even_when_the_words_arrive_minutes_late():
+    """On a busy laptop the words of minute 1 arrive at minute 4: the rates must still be computed from them."""
+    bus = MemoryBus()
+    sp = InterviewSpeech(1, "interview", bus, Database("sqlite://"), _Models())
+    tr = sp.track("candidate")
+    tr.speech = np.ones(100 * 300, bool)
+    _say(sp, "Um, so, I think maybe it was, uh, kind of hard, you know, to finish it in time.", 40.0)
+    sp.speaking(tr, 240.0)                                               # three minutes after those words were spoken
+    m = [x for x in bus.history("analytics:1") if x.get("kind") == "speaking"][-1]
+    assert m["fillers_per_100w"] and m["fillers_per_100w"] > 5 and m["hedges_per_100w"] and m["hedges_per_100w"] > 5
+    assert m["wpm"] is not None
+
+
+def test_a_question_found_in_the_last_words_is_still_analysed_at_the_stop(monkeypatch):
+    """Interview 66: the late transcript revealed questions 2 and 3 only while stopping; their answer_end went to the bus
+    after the interview was gone, so questions 1 and 2 were never analysed."""
+    bus = MemoryBus()
+    db = _db_with_interview()
+    sp = InterviewSpeech(1, "interview", bus, db, _Models())
+    sp.auto_questions = True
+    analysed = []
+    monkeypatch.setattr(sp, "answer_end", lambda ev: analysed.append(ev["question_id"]))
+    sp.track("candidate")
+    sp.track("interviewer")
+    pending = [NS(text="Introduce yourself, why are you interested in this job?", final=True, words=[], t_s=5.0),
+               NS(text="Can you tell me something about machine learning?", final=True, words=[], t_s=50.0)]
+    sp.tracks["interviewer"].asr = NS(flush=lambda: pending)
+    speech_worker.handle("control", {"type": "stop", "interview_id": 1, "t_s": 90.0}, None, bus, db, None, {1: sp}, {})
+    speech_worker.wait_for_analysis()
+    assert sorted(analysed) == ["AUTO1", "AUTO2"]
 
 
 # ---------------------------------------------------------------------------- the filler prompt echoed back on noise

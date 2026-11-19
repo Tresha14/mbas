@@ -40,6 +40,52 @@ def _session(name: str):
     return ort.InferenceSession(str(p), o, providers=["CPUExecutionProvider"])
 
 
+def _add_cuda_dlls() -> bool:
+    """Make the CUDA libraries from the pip packages nvidia-cublas-cu12 (and friends) findable on Windows.
+    True when cuBLAS 12 can be found (CTranslate2 bundles cuDNN itself but not cuBLAS)."""
+    import os
+    import shutil
+    import sysconfig
+    from pathlib import Path
+
+    base = Path(sysconfig.get_paths()["purelib"]) / "nvidia"
+    found = shutil.which("cublas64_12.dll") is not None
+    for d in sorted(base.glob("*/bin")) if base.exists() else []:
+        if hasattr(os, "add_dll_directory"):
+            os.add_dll_directory(str(d))
+        os.environ["PATH"] = str(d) + os.pathsep + os.environ.get("PATH", "")
+        found = found or (d / "cublas64_12.dll").exists() or any(d.glob("libcublas.so*"))
+    return found or os.name != "nt"
+
+
+def _cuda_whisper_works() -> tuple[bool, str]:
+    """Can faster-whisper transcribe on the GPU? Checked in a child process with a time limit: when a CUDA library is
+    missing, CTranslate2 can hang or crash the whole process instead of raising an error."""
+    import subprocess
+    import sys
+
+    try:
+        import ctranslate2
+
+        if ctranslate2.get_cuda_device_count() < 1:
+            return False, "no NVIDIA GPU visible"
+    except Exception as e:  # noqa: BLE001
+        return False, f"{type(e).__name__}: {e}"
+    if not _add_cuda_dlls():
+        return False, "cuBLAS missing: pip install nvidia-cublas-cu12"
+    probe = ("import numpy as np; from backend.inference import _add_cuda_dlls; _add_cuda_dlls(); "
+             "from faster_whisper import WhisperModel; from backend.config import settings; "
+             "m = WhisperModel(settings().whisper_model, device='cuda', compute_type='float16'); "
+             "s, _ = m.transcribe(np.zeros(16000, np.float32), language='en', beam_size=1); list(s); print('OK')")
+    try:
+        r = subprocess.run([sys.executable, "-c", probe], cwd=str(ROOT), capture_output=True, text=True, timeout=90)
+    except subprocess.TimeoutExpired:
+        return False, "the GPU test did not finish in 90 s"
+    if r.returncode == 0 and "OK" in r.stdout:
+        return True, ""
+    return False, ((r.stderr or r.stdout).strip().splitlines() or ["the GPU test failed"])[-1][:200]
+
+
 class Models:
     def __init__(self, bus=None):
         self.bus = bus
@@ -81,16 +127,37 @@ class Models:
         return "whisper" if settings().asr_backend == "whisper" and self.whisper is not None else "own"
 
     @cached_property
+    def whisper_device(self) -> str:
+        """'cuda' when Whisper can run on the NVIDIA GPU (asked for, or auto and it passes a test), else 'cpu'."""
+        from backend.config import settings
+
+        want = settings().whisper_device
+        if want == "cpu":
+            return "cpu"
+        ok, why = _cuda_whisper_works()
+        if not ok:
+            print(f"[speech] Whisper on the GPU not possible ({why}); using the CPU", flush=True)
+        return "cuda" if ok else "cpu"
+
+    def _load_whisper(self, name: str):
+        from faster_whisper import WhisperModel
+
+        if self.whisper_device == "cuda":
+            try:
+                return WhisperModel(name, device="cuda", compute_type="float16")
+            except Exception as e:  # noqa: BLE001 - the CPU still works
+                print(f"[speech] Whisper {name} failed on the GPU ({type(e).__name__}: {e}); using the CPU", flush=True)
+        return WhisperModel(name, device="cpu", compute_type="int8", cpu_threads=4)
+
+    @cached_property
     def whisper(self):
-        """Pre-trained Whisper (faster-whisper, CPU int8), or None when the package / model is missing."""
+        """Pre-trained Whisper (faster-whisper; GPU float16 or CPU int8), or None when the package / model is missing."""
         from backend.config import settings
 
         if settings().asr_backend != "whisper":
             return None
         try:
-            from faster_whisper import WhisperModel
-
-            return WhisperModel(settings().whisper_model, device="cpu", compute_type="int8", cpu_threads=4)
+            return self._load_whisper(settings().whisper_model)
         except Exception as e:  # noqa: BLE001 - fall back to our own ASR instead of having no transcript
             print(f"[speech] Whisper unavailable ({type(e).__name__}: {e}); using our own ASR", flush=True)
             return None
@@ -104,9 +171,7 @@ class Models:
         if not name or name == settings().whisper_model or self.whisper is None:
             return self.whisper
         try:
-            from faster_whisper import WhisperModel
-
-            return WhisperModel(name, device="cpu", compute_type="int8", cpu_threads=4)
+            return self._load_whisper(name)
         except Exception as e:  # noqa: BLE001
             print(f"[speech] Whisper {name} unavailable ({type(e).__name__}: {e}); using {settings().whisper_model}", flush=True)
             return self.whisper
