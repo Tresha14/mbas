@@ -2,6 +2,8 @@
 
 InterLens is the product name of the app; MBAS is the project's formal title.
 
+**New laptop? Follow [docs/SETUP_NEW_LAPTOP.md](docs/SETUP_NEW_LAPTOP.md)** (the trained models come as a separate zip).
+
 An AI-assisted interview or meeting analysis system using video, audio, and conversational signals. The system
 analyzes attention, engagement, hesitation, speaking patterns, and responses to assess communication effectiveness
 and identify areas requiring follow-up.
