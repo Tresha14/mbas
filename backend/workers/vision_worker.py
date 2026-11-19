@@ -100,7 +100,9 @@ def run(bus=None, db=None, stop=lambda: False):
                     iid = msg["interview_id"]
                     try:
                         live[iid] = InterviewVision(iid, bus, db)
-                        cursors[f"frames:{iid}"] = bus.last_id(f"frames:{iid}")
+                        # frames from the start message on (ids are time-based), not from when the models finished
+                        # loading: frames sent meanwhile would otherwise be skipped
+                        cursors[f"frames:{iid}"] = mid
                         bus.publish(f"analytics:{iid}", {"kind": "status", "models": {"vision": True}})
                     except Exception as e:  # noqa: BLE001 - missing / untrained vision models must not kill the worker
                         print(f"[vision] disabled for interview {iid}: {e}", flush=True)

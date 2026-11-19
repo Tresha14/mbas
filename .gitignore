@@ -23,6 +23,11 @@ data/raw/*
 !data/raw/mbas_synthetic_dataset/
 data/processed/*
 !data/processed/.gitkeep
+# tokenizers are tiny and must match the trained checkpoints on every laptop
+!data/processed/tokenizers/
+data/processed/tokenizers/*
+!data/processed/tokenizers/*.model
+!data/processed/tokenizers/*.vocab
 
 # Training outputs
 runs/*

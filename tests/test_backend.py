@@ -207,3 +207,18 @@ def test_report_metrics_scorecard_matrix_pressure_moments():
     assert pr["harder_n"] == 3 and "response delay +3" in pr["summary"]
     kinds = [m["kind"] for m in key_moments(cards, windows, raw)]
     assert {"best", "weakest", "delay", "silence", "voice", "attention", "reading"} <= set(kinds)
+
+
+def test_speech_worker_reads_audio_from_the_start_message(env, monkeypatch):
+    """Loading the models for a new interview can take ~20 s; audio published meanwhile must still be analysed,
+    so the worker reads each interview's audio from the start message's id, not from 'now'."""
+    from backend.workers import speech_worker
+
+    _, db, bus = env
+    monkeypatch.setattr(speech_worker, "InterviewSpeech", lambda *a, **k: object())
+    start_id = bus.publish("control", {"type": "start", "interview_id": 7})
+    early = bus.publish("audio:7:candidate", {"t_s": 0.0, "captured_at": 0.0}, b"\0\0")   # sent during model loading
+    cursors: dict = {}
+    speech_worker.handle("control", {"type": "start", "interview_id": 7}, None, bus, db, None, {}, cursors, start_id)
+    got = bus.read({"audio:7:candidate": cursors["audio:7:candidate"]}, 0)
+    assert [mid for _, mid, _, _ in got] == [early]

@@ -76,8 +76,6 @@ WIDER FACE train (90%) with RetinaFace 5-point landmarks; random face-centred sq
 
 ![face_detector_pr](metrics/face_detector_pr.png)
 
-![face_detector_smoke_curves](metrics/face_detector_smoke_curves.png)
-
 Metrics: `docs/metrics/face_detector.json`
 
 ---

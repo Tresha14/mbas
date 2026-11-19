@@ -67,9 +67,9 @@ def _port(host: str, port: int) -> bool:
         return False
 
 
-def _http(url: str) -> bool:
+def _http(url: str, timeout: float = 3) -> bool:
     try:
-        return urllib.request.urlopen(url, timeout=3).status < 500
+        return urllib.request.urlopen(url, timeout=timeout).status < 500
     except Exception:  # noqa: BLE001
         return False
 
@@ -80,7 +80,8 @@ def check_services(rows: list[tuple[str, str, str]]) -> None:
         rows.append((OK if ok else BAD, f"docker: {name} :{port}", "" if ok else r"run .\tasks.ps1 up"))
     for name, url, hint in (("API", "http://localhost:8020/docs", r".\tasks.ps1 api"),
                             ("web app", "http://localhost:3020/login", r".\tasks.ps1 web")):
-        ok = _http(url)
+        # the Next.js dev server compiles a page on its first request (about 10 s), so the web app gets longer
+        ok = _http(url, 60 if name == "web app" else 3)
         rows.append((OK if ok else BAD, name, "" if ok else f"not reachable: {hint}"))
     rows.append((WARN, "workers", r"cannot be probed: after .\tasks.ps1 workers look for '[vision] ready' and '[speech] ready' "
                                   "and no 'disabled for interview' line"))

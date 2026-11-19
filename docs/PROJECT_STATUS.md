@@ -97,6 +97,16 @@ Start everything with `.\tasks.ps1 start-all` (needs Docker Desktop running), th
 5. Bug fix: the live voice detector treated quiet room noise as speech, which broke response delay and pause numbers.
 6. Tests added; 63 pass. Everything committed and pushed.
 
+**19 Nov, after merging Aryan's commits (live flags, models page, preflight, ...):**
+7. Fixed the answer-quality crash: the answer tokenizer had been overwritten by an 8,000-piece one; the original
+   1,130-piece tokenizer was rebuilt and verified (test scores identical to the original: QWK 0.8574). The tokenizers
+   are now **in git**, and `python -m ml.common.text` no longer overwrites existing ones (`--force` to rebuild).
+8. Fixed lost audio at the start of the first interview: the workers loaded their models (~20 s) before marking
+   where to start reading, so the candidate's first ~20 s were skipped. They now read from the start message and
+   load the models when they start. Live test (fake candidate through the real LiveKit room): full transcript from
+   the first word, answer scored with all models, report grade built, 0 worker errors; vision 24 ms/frame.
+9. 82 tests pass; `python -m tools.preflight --services` is READY.
+
 ---
 
 ## 5. What is left
@@ -128,8 +138,11 @@ Start everything with `.\tasks.ps1 start-all` (needs Docker Desktop running), th
 
 ## 6. Practical notes for whoever continues
 
-- **Trained model files are not on GitHub** (`checkpoints/`, about 1.9 GB, too big). Copy the folder from Tresha's
-  laptop (Google Drive / pen drive) into `mbas/checkpoints/` or the app will say "model not trained".
+- **Trained model files are not on GitHub** (too big). Get `mbas_models_2026-11-19.zip` (121 MB, v2 with the fixed
+  tokenizer) from Tresha and extract it into the `mbas/` folder; it fills `checkpoints/`, `ml/export/onnx/` and
+  `data/processed/`. Then `python -m tools.preflight` must say READY.
+- Start everything: Docker Desktop, then `.\tasks.ps1 start-all` (or `api`, `workers`, `web` in three terminals),
+  open http://localhost:3020. Before a demo: `python -m tools.preflight --services`.
 - Setup: `README.md` → *Setup (Windows, PowerShell)*. Python venv in `.venv`, frontend in `frontend/` (`npm install`).
 - Run the tests: `.\tasks.ps1 test`.
 - Retrain a model: commands per model in `README.md` → *Stages 4-8*; every training script supports `--resume`.

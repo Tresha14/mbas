@@ -119,13 +119,19 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--asr-vocab", type=int, default=1000)
     ap.add_argument("--answer-vocab", type=int, default=8000)
+    ap.add_argument("--force", action="store_true",
+                    help="rebuild tokenizers that already exist (the trained ASR / answer checkpoints then need retraining)")
     args = ap.parse_args(argv)
-    a = corpus_asr()
-    p = train_tokenizer("asr", a, args.asr_vocab)
-    print(f"asr tokenizer: {len(Tokenizer(p))} pieces from {len(a)} lines -> {p}")
-    b = corpus_answer()
-    p = train_tokenizer("answer", b, args.answer_vocab)
-    print(f"answer tokenizer: {len(Tokenizer(p))} pieces from {len(b)} lines -> {p}")
+    # The checkpoints are tied to the exact tokenizer they were trained with (the corpus decides the vocabulary
+    # size), so an existing tokenizer is never overwritten by accident. The committed answer tokenizer has 1,130
+    # pieces: it was built from the interview answers before LibriSpeech was added to the corpus.
+    for name, corpus, vocab in (("asr", corpus_asr, args.asr_vocab), ("answer", corpus_answer, args.answer_vocab)):
+        if (TOK_DIR / f"{name}.model").exists() and not args.force:
+            print(f"{name} tokenizer exists ({len(load(name))} pieces), kept; use --force to rebuild")
+            continue
+        lines = corpus()
+        p = train_tokenizer(name, lines, vocab)
+        print(f"{name} tokenizer: {len(Tokenizer(p))} pieces from {len(lines)} lines -> {p}")
     return 0
 
 

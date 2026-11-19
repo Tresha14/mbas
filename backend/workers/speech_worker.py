@@ -365,6 +365,10 @@ def run(bus=None, db=None, stop=lambda: False):
     bus = bus or make_bus(cfg.redis_url)
     db = db or Database(cfg.database_url)
     models = Models(bus)
+    # load every model now (ASR, VAD, disfluency, answer, fusion: ~20 s the first time), not when the first
+    # interview starts, so the first answer of the day is analysed as fast as the rest
+    for m in ("vad", "asr", "disfluency", "answer", "fusion"):
+        getattr(models, m)
     live: dict[int, InterviewSpeech] = {}
     cursors = {"control": bus.last_id("control")}
     print("[speech] ready", flush=True)
@@ -372,23 +376,25 @@ def run(bus=None, db=None, stop=lambda: False):
         for name, mid, msg, binary in bus.read(dict(cursors), 500, 100):
             cursors[name] = mid
             try:
-                handle(name, msg, binary, bus, db, models, live, cursors)
+                handle(name, msg, binary, bus, db, models, live, cursors, mid)
             except Exception:  # noqa: BLE001 - one bad message must not stop the worker
                 import traceback
 
                 traceback.print_exc()
 
 
-def handle(name, msg, binary, bus, db, models, live, cursors):
+def handle(name, msg, binary, bus, db, models, live, cursors, mid: str | None = None):
     """One bus message: control events (start / answer_end / stop) or a 640 ms audio chunk."""
     if name == "control":
         iid = msg.get("interview_id")
         if msg["type"] == "start":
-            live[iid] = InterviewSpeech(iid, msg.get("mode", "interview"), bus, db, models)
+            # read this interview's audio from the moment of the start message (stream ids are time-based), not
+            # from whenever the setup below finishes: audio published meanwhile would otherwise be skipped
             for k in [k for k in list(cursors) if k.startswith(f"audio:{iid}:")]:
                 cursors.pop(k)
-            cursors[f"audio:{iid}:candidate"] = bus.last_id(f"audio:{iid}:candidate")
-            cursors[f"audio:{iid}:interviewer"] = bus.last_id(f"audio:{iid}:interviewer")
+            for role in ("candidate", "interviewer"):
+                cursors[f"audio:{iid}:{role}"] = mid or bus.last_id(f"audio:{iid}:{role}")
+            live[iid] = InterviewSpeech(iid, msg.get("mode", "interview"), bus, db, models)
         elif msg["type"] == "answer_end" and iid in live:
             live[iid].answer_end(msg)
         elif msg["type"] == "stop" and iid in live:
