@@ -12,6 +12,7 @@ import socket
 import sys
 import urllib.request
 
+import backend.config  # noqa: F401  (loads .env, so MBAS_ASR is seen)
 from ml.common.config import CHECKPOINTS, PROCESSED, ROOT
 
 REQUIRED = ["vad", "asr", "disfluency", "face_detector", "headpose", "gaze_iris", "window_models", "answer_quality",
@@ -33,6 +34,18 @@ def check_files(rows: list[tuple[str, str, str]]) -> None:
     for p in ("tokenizers/asr.model", "tokenizers/answer.model", "lm/interview_4gram.arpa"):
         ok = (PROCESSED / p).exists()
         rows.append((OK if ok else BAD, f"data/processed/{p}", "" if ok else "missing"))
+    import os
+
+    backend = os.environ.get("MBAS_ASR", "own").lower()
+    if backend == "whisper":
+        try:
+            import faster_whisper  # noqa: F401
+
+            rows.append((OK, "speech recogniser", f"Whisper {os.environ.get('MBAS_WHISPER_MODEL', 'base.en')} (pre-trained, optional)"))
+        except ImportError:
+            rows.append((WARN, "speech recogniser", "MBAS_ASR=whisper but faster-whisper is not installed: pip install faster-whisper (our own ASR is used)"))
+    else:
+        rows.append((OK, "speech recogniser", "our own Conformer-CTC (set MBAS_ASR=whisper for the pre-trained Whisper)"))
     onnx = ROOT / "ml" / "export" / "onnx"
     n = len(list(onnx.glob("*.onnx"))) if onnx.exists() else 0
     rows.append((OK if n else WARN, "ONNX exports", f"{n} files" if n else "none: the PyTorch fallback is used (slower)"))

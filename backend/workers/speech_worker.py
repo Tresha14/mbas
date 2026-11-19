@@ -94,13 +94,17 @@ class InterviewSpeech:
         self.in_pause = False
         self.questions: dict[int, dict] = {}
         bus.publish(f"analytics:{self.id}", {"kind": "status", "models": {
-            "vad": models.vad is not None, "asr": models.asr is not None, "disfluency": models.disfluency is not None,
+            "vad": models.vad is not None, "asr": getattr(models, "asr_ready", models.asr is not None), "asr_pretrained": getattr(models, "asr_backend", "own") == "whisper", "disfluency": models.disfluency is not None,
             "answer_quality": models.answer is not None, "fusion": models.fusion is not None}})
 
     def track(self, name: str) -> Track:
         if name not in self.tracks:
             t = Track(name)
-            if self.m.asr is not None:
+            if getattr(self.m, "asr_backend", "own") == "whisper":
+                from ml.speech.asr.whisper_streaming import WhisperStreamingASR
+
+                t.asr = WhisperStreamingASR(self.m.whisper, ChunkVAD(self.m.vad))
+            elif self.m.asr is not None:
                 from ml.speech.asr.streaming import StreamingASR
 
                 model, tok, dev = self.m.asr
@@ -367,8 +371,9 @@ def run(bus=None, db=None, stop=lambda: False):
     models = Models(bus)
     # load every model now (ASR, VAD, disfluency, answer, fusion: ~20 s the first time), not when the first
     # interview starts, so the first answer of the day is analysed as fast as the rest
-    for m in ("vad", "asr", "disfluency", "answer", "fusion"):
+    for m in ("vad", "asr_backend", "whisper", "asr", "disfluency", "answer", "fusion"):
         getattr(models, m)
+    print(f"[speech] recogniser: {'Whisper ' + settings().whisper_model + ' (pre-trained)' if models.asr_backend == 'whisper' else 'our own ASR'}", flush=True)
     live: dict[int, InterviewSpeech] = {}
     cursors = {"control": bus.last_id("control")}
     print("[speech] ready", flush=True)

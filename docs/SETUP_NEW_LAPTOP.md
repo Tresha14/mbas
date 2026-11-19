@@ -65,6 +65,13 @@ All commands in **PowerShell**, inside the project folder.
    ```
    It must end with **READY**. A `FAIL` line says what is missing (usually the models zip from step 2).
 
+7. **Optional: a better transcript on real microphones.** Our own speech model only knows clean audiobook-style audio.
+   For real voices, install the pre-trained Whisper recogniser (about 150 MB, downloaded once):
+   ```powershell
+   .\.venv\Scripts\python -m pip install faster-whisper
+   ```
+   then add `MBAS_ASR=whisper` to `.env` and restart the workers. See `docs/pretrained_models.md`.
+
 ## Every time you run it
 
 1. Open **Docker Desktop** and wait until it says it is running.

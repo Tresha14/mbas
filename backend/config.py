@@ -34,6 +34,9 @@ class Settings:
     livekit_url: str = field(default_factory=lambda: os.environ.get("LIVEKIT_URL", "ws://localhost:7880"))
     public_url: str = field(default_factory=lambda: os.environ.get("MBAS_PUBLIC_URL", "http://localhost:3020"))
     questions_path: Path = ROOT / "recorder" / "questions.json"
+    # speech recogniser: "own" = our trained Conformer-CTC (default); "whisper" = pre-trained Whisper via faster-whisper
+    asr_backend: str = field(default_factory=lambda: os.environ.get("MBAS_ASR", "own").strip().lower())
+    whisper_model: str = field(default_factory=lambda: os.environ.get("MBAS_WHISPER_MODEL", "base.en").strip())
 
 
 def settings() -> Settings:

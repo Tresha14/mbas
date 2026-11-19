@@ -74,6 +74,32 @@ class Models:
         return m, text.load("asr"), dev
 
     @cached_property
+    def asr_backend(self) -> str:
+        """Which recogniser runs: 'whisper' only when asked for AND available, otherwise our own."""
+        from backend.config import settings
+
+        return "whisper" if settings().asr_backend == "whisper" and self.whisper is not None else "own"
+
+    @cached_property
+    def whisper(self):
+        """Pre-trained Whisper (faster-whisper, CPU int8), or None when the package / model is missing."""
+        from backend.config import settings
+
+        if settings().asr_backend != "whisper":
+            return None
+        try:
+            from faster_whisper import WhisperModel
+
+            return WhisperModel(settings().whisper_model, device="cpu", compute_type="int8", cpu_threads=4)
+        except Exception as e:  # noqa: BLE001 - fall back to our own ASR instead of having no transcript
+            print(f"[speech] Whisper unavailable ({type(e).__name__}: {e}); using our own ASR", flush=True)
+            return None
+
+    @property
+    def asr_ready(self) -> bool:
+        return self.asr_backend == "whisper" or self.asr is not None
+
+    @cached_property
     def lm_decoder(self):
         """Beam search + 4-gram LM for finished utterances; None (greedy only) when the ASR or the LM is missing."""
         if self.asr is None:

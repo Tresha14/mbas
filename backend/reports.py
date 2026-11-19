@@ -14,6 +14,7 @@ from collections import Counter, defaultdict
 
 import numpy as np
 
+from backend.combined_flags import find_combined_flags
 from backend.report_metrics import (behaviour_sections, card_details, confidence_matrix, has_face, key_moments,
                                     pressure_response, scorecard)
 
@@ -113,6 +114,7 @@ def build_reports(data: dict) -> tuple[dict, dict]:
                     "engaged_share": round(eng.count("engaged") / len(eng), 3) if eng else None,
                     "follow_ups": len(data["follow_ups"])},
         "radar": radar, "cards": cards, "timeline": timeline, "delivery": delivery, "speech_timeline": speech_timeline,
+        "combined_flags": find_combined_flags(windows, [dict(x) for x in speech], flags, cards),
         "flags": [{"t_s": f["t_s"], "time": _mmss(f["t_s"]), "kind": f["kind"], "text": f.get("text", "")} for f in flags],
         "scorecard": scorecard(cards, raw), "behaviour": sections, "matrix": confidence_matrix(cards),
         "pressure": pressure_response(cards, difficulty), "moments": key_moments(cards, windows, raw),

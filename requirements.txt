@@ -35,3 +35,6 @@ nbformat>=5.9
 nbclient>=0.10
 ipykernel>=6.29
 matplotlib>=3.8
+
+# Optional pre-trained speech recogniser (MBAS_ASR=whisper). NOT trained by us; see docs/pretrained_models.md
+faster-whisper>=1.2

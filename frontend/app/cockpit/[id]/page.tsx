@@ -262,6 +262,9 @@ export default function Cockpit() {
             <div className="px-3 py-4">
               {detail === "transcript" && (
                 <div className="max-h-80 space-y-0.5 overflow-y-auto">
+                  {state.models?.asr_pretrained && (
+                    <p className="px-3 pb-2 text-xs text-faint">Speech recognition here is a pre-trained model (Whisper). Lines appear a moment after each pause.</p>
+                  )}
                   {lines.length === 0
                     ? <Empty title={state.models && !state.models.asr ? "Transcript unavailable" : "Listening…"} text={state.models && !state.models.asr ? "The speech model hasn't been trained yet." : "Words appear here as people speak. Filler words are underlined."} />
                     : lines.map((l, i) => <TranscriptLine key={i} l={l} active={jump != null && Math.abs(l.start_s - jump) < 3} />)}

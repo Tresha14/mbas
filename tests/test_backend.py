@@ -300,3 +300,50 @@ def test_zero_blinks_over_a_whole_interview_is_not_rated():
     sections, raw = behaviour_sections([], wins, "")
     row = next(r for s in sections for r in s["rows"] if r["key"] == "blink_rate")
     assert row["status"] == "neutral" and "could not be tracked" in row["note"] and raw["eyes"]["blink"] is None
+
+
+# ---------------------------------------------------------------------------- combined flags (ported from the older project)
+def _calm_interview(n=24):
+    """Four minutes of steady delivery: windows every 10 s and speaking stats every 10 s."""
+    wins = [{"start_s": t - 5.0, "end_s": float(t), "on_screen_ratio": 0.9,
+             "features": {"face_present_ratio": 1.0, "head_yaw_std_deg": 2.0}} for t in range(10, 10 * n + 1, 10)]
+    sp = [{"t_s": float(t), "wpm": 140.0, "pause_ratio": 0.10, "fillers_per_100w": 0.5, "hedges_per_100w": 0.5} for t in range(10, 10 * n + 1, 10)]
+    return wins, sp
+
+
+def test_combined_flags_need_several_signals_together():
+    from backend.combined_flags import find_combined_flags
+
+    wins, sp = _calm_interview()
+    assert find_combined_flags(wins, sp, []) == []                      # a calm interview flags nothing
+    # one signal getting bad on its own (more pausing) is not enough
+    one = [dict(s, pause_ratio=0.6) if 90 <= s["t_s"] <= 130 else s for s in sp]
+    assert find_combined_flags(wins, one, []) == []
+    # pausing + hedging + looking away together around 90-130 s is flagged, once
+    bad_w = [dict(w, on_screen_ratio=0.1) if 90 <= w["end_s"] <= 130 else w for w in wins]
+    bad_s = [dict(s, pause_ratio=0.6, hedges_per_100w=12.0) if 90 <= s["t_s"] <= 130 else s for s in sp]
+    cards = [{"order": 3, "question_ref": 7, "ask_s": 60.0, "end_s": 150.0}]
+    flags = find_combined_flags(bad_w, bad_s, [{"kind": "long_pause", "t_s": 100.0}], cards)
+    assert len(flags) == 1 and {"pause_rate", "hedge_rate", "camera_facing", "long_pause"} <= set(flags[0]["signals"])
+    assert flags[0]["question_order"] == 3 and "together" in flags[0]["text"] and flags[0]["t_start"] <= 100 <= flags[0]["t_end"]
+
+
+def test_combined_flags_are_relative_to_the_speaker_and_ignore_missing_data():
+    from backend.combined_flags import find_combined_flags
+
+    assert find_combined_flags([], [], []) == []
+    wins, sp = _calm_interview()
+    # uniformly weak delivery has no baseline to deviate from: no combined flags (the scorecard covers it)
+    weak_w = [dict(w, on_screen_ratio=0.2) for w in wins]
+    weak_s = [dict(s, pause_ratio=0.6, hedges_per_100w=12.0) for s in sp]
+    assert find_combined_flags(weak_w, weak_s, []) == []
+    # windows without a face are not "looking away": they are skipped for the camera signals
+    nofac = [dict(w, on_screen_ratio=0.0, features={"face_present_ratio": 0.0, "head_yaw_std_deg": 0.0}) if 90 <= w["end_s"] <= 130 else w for w in wins]
+    assert find_combined_flags(nofac, sp, []) == []
+
+
+def test_report_includes_combined_flags_list():
+    from backend.reports import build_reports
+
+    iv, _ = build_reports(_data())
+    assert iv["combined_flags"] == []
