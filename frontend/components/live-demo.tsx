@@ -61,8 +61,8 @@ function CandidateTile({ t }: { t: number }) {
         <ellipse cx="100" cy="66" rx="25" ry="31" fill="#4a5652" />
         <path d="M75 58 C76 34 124 34 125 58 C121 46 79 46 75 58 Z" fill="#2c3431" />
         {/* eyes (blink) */}
-        <motion.ellipse cx="90" cy="66" rx="3.2" animate={{ ry: blink ? 0.4 : 2.2 }} transition={{ duration: 0.12 }} fill="#1c2220" />
-        <motion.ellipse cx="110" cy="66" rx="3.2" animate={{ ry: blink ? 0.4 : 2.2 }} transition={{ duration: 0.12 }} fill="#1c2220" />
+        <motion.ellipse cx="90" cy="66" rx="3.2" initial={{ ry: 2.2 }} animate={{ ry: blink ? 0.4 : 2.2 }} transition={{ duration: 0.12 }} fill="#1c2220" />
+        <motion.ellipse cx="110" cy="66" rx="3.2" initial={{ ry: 2.2 }} animate={{ ry: blink ? 0.4 : 2.2 }} transition={{ duration: 0.12 }} fill="#1c2220" />
         {/* face box with corner brackets */}
         <g stroke="#5eb8ad" strokeWidth="1.4" fill="none" strokeLinecap="round">
           <path d="M70 38 v-6 h7 M130 38 v-6 h-7 M70 96 v6 h7 M130 96 v6 h-7" />
@@ -72,9 +72,9 @@ function CandidateTile({ t }: { t: number }) {
           <circle key={i} cx={x} cy={y} r="1.3" fill="#5eb8ad" />
         ))}
         {/* gaze ray */}
-        <motion.line x1="100" y1="66" animate={{ x2: 100 + gx * 1.6, y2: 40 + gy }} transition={{ duration: 0.9, ease: "easeInOut" }}
+        <motion.line x1="100" y1="66" initial={{ x2: 100, y2: 40 }} animate={{ x2: 100 + gx * 1.6, y2: 40 + gy }} transition={{ duration: 0.9, ease: "easeInOut" }}
           stroke={away ? "#d9a54a" : "#5eb8ad"} strokeWidth="1" strokeDasharray="2 2" opacity="0.8" />
-        <motion.circle r="3" animate={{ cx: 100 + gx * 1.6, cy: 40 + gy }} transition={{ duration: 0.9, ease: "easeInOut" }}
+        <motion.circle r="3" initial={{ cx: 100, cy: 40 }} animate={{ cx: 100 + gx * 1.6, cy: 40 + gy }} transition={{ duration: 0.9, ease: "easeInOut" }}
           fill={away ? "#d9a54a" : "#5eb8ad"} />
       </svg>
       <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 rounded-full bg-black/40 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur">

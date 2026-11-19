@@ -64,30 +64,37 @@ function Form() {
 
 export default function Login() {
   return (
-    <main className="grid min-h-screen lg:grid-cols-2">
-      <div className="flex flex-col px-8 py-8">
-        <Logo />
-        <div className="flex flex-1 items-center justify-center py-12"><Suspense><Form /></Suspense></div>
-        <p className="text-[13px] text-faint">Candidates don&apos;t need an account. They join with the link you send them.</p>
+    <main className="grid min-h-screen lg:h-screen lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      {/* left: logo, form and footer share one centred column, so their left edges line up */}
+      <div className="flex justify-center px-8 py-10">
+        <div className="flex w-full max-w-sm flex-col">
+          <Logo />
+          <div className="flex flex-1 items-center py-12"><Suspense><Form /></Suspense></div>
+          <p className="text-[13px] leading-relaxed text-faint">Candidates don&apos;t need an account. They join with the link you send them.</p>
+        </div>
       </div>
-      <div className="relative hidden overflow-hidden bg-[#121413] lg:block">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_25%_15%,rgba(94,184,173,0.28),transparent_55%),radial-gradient(ellipse_at_90%_95%,rgba(217,165,74,0.12),transparent_50%)]" />
-        <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,.6)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.6)_1px,transparent_1px)] [background-size:44px_44px]" />
-        <div className="relative flex h-full flex-col justify-center gap-10 px-14 py-12 text-white">
+      {/* right: heading, live preview and quote share one centred column */}
+      <div className="relative hidden overflow-hidden bg-[#121413] lg:flex lg:items-center lg:justify-center">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_30%,rgba(94,184,173,0.22),transparent_70%),radial-gradient(ellipse_60%_50%_at_50%_100%,rgba(217,165,74,0.10),transparent_70%)]" />
+        <div className="absolute inset-0 opacity-[0.06] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)] [background-image:linear-gradient(rgba(255,255,255,.6)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.6)_1px,transparent_1px)] [background-size:44px_44px]" />
+        <div className="relative flex w-full max-w-[640px] flex-col gap-10 px-10 py-12 text-white [@media(max-height:860px)]:gap-6 [@media(max-height:860px)]:py-8">
           <div>
             <p className="text-[12px] font-medium tracking-[0.2em] text-[#7fd1c6] uppercase">InterLens · AI interview copilot</p>
-            <h2 className="mt-3 max-w-lg font-display text-[40px] leading-[1.1] tracking-tight">
+            <h2 className="mt-3 font-display text-[40px] leading-[1.1] tracking-tight xl:text-[46px] [@media(max-height:860px)]:text-[34px]">
               See what an interview <em className="text-[#7fd1c6]">really</em> said.
             </h2>
-            <p className="mt-3 max-w-md text-[15px] text-white/55">
+            <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-white/55 [@media(max-height:700px)]:hidden">
               Eyes, voice and words, read live by models we trained ourselves: attention, hesitation, fillers, pauses and
               answer quality, with a fair report at the end.
             </p>
           </div>
-          <LiveDemo className="max-w-[560px]" />
-          <p className="max-w-lg font-display text-xl leading-snug text-white/75">
-            &ldquo;Instead of a vague rejection, every candidate leaves with three concrete things to work on.&rdquo;
-          </p>
+          <LiveDemo />
+          <figure className="border-l-2 border-[#5eb8ad]/50 pl-5 [@media(max-height:860px)]:hidden">
+            <blockquote className="font-display text-xl leading-snug text-white/80">
+              &ldquo;Instead of a vague rejection, every candidate leaves with three concrete things to work on.&rdquo;
+            </blockquote>
+            <figcaption className="mt-2 text-[13px] text-white/40">Designed for placement cells, recruiters and student mock interviews</figcaption>
+          </figure>
         </div>
       </div>
     </main>
