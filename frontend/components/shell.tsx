@@ -11,11 +11,14 @@ export function Logo() {
   return (
     <Link href="/" className="flex items-center gap-2.5">
       <span className="grid h-7 w-7 place-items-center rounded-lg bg-fg text-bg">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-          <path d="M3 12h3l2-6 4 12 3-9 2 3h4" />
+        {/* a lens with a signal line through it */}
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M20.5 20.5 16 16" />
+          <path d="M6.5 11h2l1.2-2.5 2 5 1.3-2.5h1.5" />
         </svg>
       </span>
-      <span className="font-display text-[19px] tracking-tight">mbas</span>
+      <span className="font-display text-[19px] tracking-tight">InterLens</span>
     </Link>
   );
 }

@@ -172,7 +172,7 @@ export default function Cockpit() {
         </div>} />
       <Sheet open={callPicker} onClose={() => setCallPicker(false)} title="Analyse a call held elsewhere">
         <p className="text-[13px] text-muted">
-          Hold the interview on another app as usual. MBAS captures the call from this computer and analyses the candidate
+          Hold the interview on another app as usual. InterLens captures the call from this computer and analyses the candidate
           exactly like in its own room; the candidate does not need to install or join anything.
         </p>
         <div className="mt-5 space-y-3">

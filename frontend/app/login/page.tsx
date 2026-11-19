@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { LiveDemo } from "@/components/live-demo";
 import { Logo } from "@/components/shell";
 import { Button, Input, Label, Segmented } from "@/components/ui";
 import { api, setToken, type Role } from "@/lib/api";
@@ -69,13 +70,24 @@ export default function Login() {
         <div className="flex flex-1 items-center justify-center py-12"><Suspense><Form /></Suspense></div>
         <p className="text-[13px] text-faint">Candidates don&apos;t need an account. They join with the link you send them.</p>
       </div>
-      <div className="relative hidden overflow-hidden bg-[#141413] lg:block">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(94,184,173,0.25),transparent_60%)]" />
-        <div className="relative flex h-full flex-col justify-end p-14 text-white">
-          <p className="font-display text-3xl leading-snug text-white/90">
+      <div className="relative hidden overflow-hidden bg-[#121413] lg:block">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_25%_15%,rgba(94,184,173,0.28),transparent_55%),radial-gradient(ellipse_at_90%_95%,rgba(217,165,74,0.12),transparent_50%)]" />
+        <div className="absolute inset-0 opacity-[0.07] [background-image:linear-gradient(rgba(255,255,255,.6)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.6)_1px,transparent_1px)] [background-size:44px_44px]" />
+        <div className="relative flex h-full flex-col justify-center gap-10 px-14 py-12 text-white">
+          <div>
+            <p className="text-[12px] font-medium tracking-[0.2em] text-[#7fd1c6] uppercase">InterLens · AI interview copilot</p>
+            <h2 className="mt-3 max-w-lg font-display text-[40px] leading-[1.1] tracking-tight">
+              See what an interview <em className="text-[#7fd1c6]">really</em> said.
+            </h2>
+            <p className="mt-3 max-w-md text-[15px] text-white/55">
+              Eyes, voice and words, read live by models we trained ourselves: attention, hesitation, fillers, pauses and
+              answer quality, with a fair report at the end.
+            </p>
+          </div>
+          <LiveDemo className="max-w-[560px]" />
+          <p className="max-w-lg font-display text-xl leading-snug text-white/75">
             &ldquo;Instead of a vague rejection, every candidate leaves with three concrete things to work on.&rdquo;
           </p>
-          <p className="mt-6 text-sm text-white/50">Designed for placement cells, recruiters and student mock interviews</p>
         </div>
       </div>
     </main>

@@ -7,8 +7,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const display = Fraunces({ subsets: ["latin"], variable: "--font-display-serif", weight: ["400", "500", "600"], style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
-  title: "MBAS · Interview & meeting copilot",
-  description: "Multimodal Behavioural Analysis System: attention, engagement, hesitation, speaking patterns and responses.",
+  title: "InterLens · AI interview & meeting copilot",
+  description: "InterLens (Multimodal Behavioural Analysis System): attention, engagement, hesitation, speaking patterns and responses.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

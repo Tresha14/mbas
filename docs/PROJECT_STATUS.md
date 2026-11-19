@@ -1,8 +1,8 @@
-# MBAS: project status and handoff
+# InterLens (MBAS): project status and handoff
 
 _Last updated 19 November 2026. Code: https://github.com/Tresha14/mbas (branch `main`)._
 
-MBAS (Multimodal Behavioural Analysis System) is an interview and meeting copilot. While a candidate answers, it
+InterLens (formal title: MBAS, Multimodal Behavioural Analysis System) is an interview and meeting copilot. While a candidate answers, it
 watches the video, listens to the audio and reads the transcript, then tells the interviewer how attentive, engaged,
 fluent and confident the candidate is, which answers need a follow-up, and finally gives a rated report.
 

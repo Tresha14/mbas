@@ -1,4 +1,6 @@
-# MBAS — Multimodal Behavioural Analysis System
+# InterLens — Multimodal Behavioural Analysis System (MBAS)
+
+InterLens is the product name of the app; MBAS is the project's formal title.
 
 An AI-assisted interview or meeting analysis system using video, audio, and conversational signals. The system
 analyzes attention, engagement, hesitation, speaking patterns, and responses to assess communication effectiveness

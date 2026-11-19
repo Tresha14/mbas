@@ -6,7 +6,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Header } from "@/components/shell";
 import { claims } from "@/lib/api";
-import { Button, Dot } from "@/components/ui";
+import { Button } from "@/components/ui";
+import { LiveDemo } from "@/components/live-demo";
 
 const pillars = [
   { icon: Eye, title: "Sees attention", text: "Gaze, glances and engagement from the webcam, measured by models we trained ourselves." },
@@ -15,28 +16,11 @@ const pillars = [
 ];
 
 function Preview() {
-  const rows = [["Attention", 82, "strong", "text-good"], ["Engagement", 71, "strong", "text-good"], ["Hesitation", 38, "low", "text-good"]] as const;
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.6 }}
-      className="relative rounded-[28px] border border-line bg-surface p-6 shadow-soft">
-      <div className="mb-5 flex items-center justify-between">
-        <span className="text-[13px] text-muted">Live · Software engineer, round 1</span>
-        <span className="flex items-center gap-2 text-[13px] text-muted"><Dot tone="good" pulse /> analysing</span>
-      </div>
-      <div className="mb-5 aspect-video rounded-2xl bg-gradient-to-br from-[#2a2a27] to-[#141413]" />
-      <div className="divide-y divide-line">
-        {rows.map(([l, v, w, c]) => (
-          <div key={l} className="flex items-center gap-4 py-3">
-            <span className="w-24 text-[13px] text-muted">{l}</span>
-            <span className="font-display text-2xl tabular-nums">{v}</span>
-            <svg className="h-6 flex-1" viewBox="0 0 120 24" preserveAspectRatio="none"><path d={`M0 ${24 - v / 6} C30 ${20 - v / 7}, 60 ${26 - v / 5}, 120 ${24 - v / 4.5}`} fill="none" stroke="var(--good)" strokeWidth="1.5" /></svg>
-            <span className={`w-16 text-right text-[13px] ${c}`}>{w}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 rounded-2xl bg-accent-soft px-4 py-3 text-[13px] text-accent">
-        Suggested follow-up: ask for a concrete example of the result.
-      </div>
+      className="relative overflow-hidden rounded-[30px] bg-[#121413] p-5 shadow-soft">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,rgba(94,184,173,0.25),transparent_55%)]" />
+      <LiveDemo className="relative border-white/5 bg-transparent p-0 shadow-none" />
     </motion.div>
   );
 }
@@ -52,7 +36,7 @@ export default function Landing() {
       <main className="mx-auto max-w-6xl px-6">
         <section className="grid items-center gap-14 py-20 lg:grid-cols-[1.05fr_1fr] lg:py-28">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <p className="mb-5 text-[13px] tracking-wide text-accent">Multimodal Behavioural Analysis System</p>
+            <p className="mb-5 text-[13px] tracking-wide text-accent">InterLens · Multimodal Behavioural Analysis System</p>
             <h1 className="font-display text-5xl leading-[1.05] tracking-tight sm:text-6xl">
               Interviews that are <em className="text-accent">clearer</em> for both sides of the table.
             </h1>
