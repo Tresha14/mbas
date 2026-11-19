@@ -9,7 +9,9 @@ FILLERS = {"um", "uh", "umm", "uhh", "er", "erm", "ah", "hmm", "hm", "mm", "matl
            "like", "achha", "acha", "toh", "na"}
 MULTI_FILLERS = ["you know", "i mean", "sort of", "kind of", "what to say"]
 HEDGES = ["i think", "maybe", "not sure", "i guess", "probably", "perhaps", "i believe", "might be", "kind of",
-          "sort of", "i am not sure", "i'm not sure", "not completely sure", "it depends"]
+          "sort of", "i am not sure", "i'm not sure", "not completely sure", "it depends",
+          "i suppose", "i feel like", "i would say", "something like that", "or something", "if i am not wrong",
+          "if i'm not wrong", "if i'm not mistaken", "to some extent", "more or less"]
 CORRECTIONS = ["i mean", "sorry", "no wait", "rather", "or rather", "let me rephrase", "actually no"]
 _WORD = re.compile(r"[a-z']+")
 

@@ -95,6 +95,13 @@ class Models:
             print(f"[speech] Whisper unavailable ({type(e).__name__}: {e}); using our own ASR", flush=True)
             return None
 
+    @cached_property
+    def whisper_pool(self):
+        """One background thread that runs every Whisper transcription, so the audio loops never wait for it."""
+        from concurrent.futures import ThreadPoolExecutor
+
+        return ThreadPoolExecutor(max_workers=1, thread_name_prefix="whisper")
+
     @property
     def asr_ready(self) -> bool:
         return self.asr_backend == "whisper" or self.asr is not None

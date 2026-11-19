@@ -83,4 +83,5 @@ def test_stopping_mid_answer_analyses_the_open_question(env, monkeypatch):
     monkeypatch.setattr(sp, "answer_end", lambda ev: got.append(ev))
     live = {iv["id"]: sp}
     speech_worker.handle("control", {"type": "stop", "interview_id": iv["id"], "t_s": 70.0}, None, bus, db, None, live, {})
+    speech_worker.wait_for_analysis()                               # the analysis runs on its own thread
     assert len(got) == 1 and got[0]["question_id"] == "AUTO1" and got[0]["end_s"] == 70.0 and iv["id"] not in live

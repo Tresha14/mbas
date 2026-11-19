@@ -13,7 +13,9 @@ Publishes to analytics:{id}:
 """
 from __future__ import annotations
 
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -32,6 +34,10 @@ from ml.behaviour.text_hesitation import FILLERS, HEDGES, count_phrases, filler_
 
 SR = 16000
 FRAME = 160
+# Answer analysis takes about 10 s (the disfluency model alone 6 s). It runs on its own thread so the audio loop keeps
+# reading: a loop that blocks for 10 s on every question falls behind real time and loses the end of the interview.
+_ANALYSIS = ThreadPoolExecutor(max_workers=1, thread_name_prefix="answer-analysis")
+TEXT_WIN_S, TEXT_MIN_WORDS = 60.0, 8       # filler / hedge rates: the last minute of words, from 8 words on
 SILENCE_DB = -52.0           # absolute floor under the VAD (dBFS per 10 ms frame)
 SOUND_DB = -55.0             # a chunk louder than this means the microphone is alive (room noise is about -60 .. -50)
 
@@ -99,6 +105,7 @@ class InterviewSpeech:
         self.tracks: dict[str, Track] = {}
         self.next_speaking, self.next_conv = 5.0, 10.0
         self.next_health = 0.0
+        self.lock = threading.RLock()            # guards the tracks: the analysis thread reads them while audio arrives
         self.in_pause = False
         self.questions: dict[int, dict] = {}
         self.platform = platform or "interlens"
@@ -118,7 +125,10 @@ class InterviewSpeech:
             if getattr(self.m, "asr_backend", "own") == "whisper":
                 from ml.speech.asr.whisper_streaming import WhisperStreamingASR
 
-                t.asr = WhisperStreamingASR(self.m.whisper, ChunkVAD(self.m.vad))
+                from ml.speech.asr.whisper_streaming import FILLER_PROMPT
+
+                t.asr = WhisperStreamingASR(self.m.whisper, ChunkVAD(self.m.vad), pool=getattr(self.m, "whisper_pool", None),
+                                            prompt=None if settings().whisper_prompt == "off" else FILLER_PROMPT)
             elif self.m.asr is not None:
                 from ml.speech.asr.streaming import StreamingASR
 
@@ -129,6 +139,10 @@ class InterviewSpeech:
 
     # ------------------------------------------------------------------ audio
     def audio(self, name: str, msg: dict, pcm: bytes):
+        with self.lock:
+            self._audio(name, msg, pcm)
+
+    def _audio(self, name: str, msg: dict, pcm: bytes):
         tr = self.track(name)
         x = np.frombuffer(pcm, np.int16).astype(np.float32) / 32768.0
         t0 = msg["t_s"]
@@ -266,7 +280,7 @@ class InterviewSpeech:
         ev = {"type": "answer_end", "interview_id": self.id, **q, "end_s": round(end_s, 2), "t_s": round(end_s, 2), "auto": True}
         self.bus.publish(f"analytics:{self.id}", {"kind": "question", **ev})
         if direct:                                   # the interview is ending: nobody will read a queued message
-            self.answer_end(ev)
+            submit_answer(self, ev)
         else:
             self.bus.publish("control", ev)
 
@@ -299,9 +313,9 @@ class InterviewSpeech:
             v = f0[~np.isnan(f0)]
             if len(v) > 10:
                 pitch_var = float(np.std(12 * np.log2(v / np.median(v))))
-        text = " ".join(f["text"] for f in tr.finals if f["end_s"] > t - win)
+        text = " ".join(f["text"] for f in tr.finals if f["end_s"] > t - TEXT_WIN_S)     # a minute of words: 30 s rarely has enough
         ws = split_words(text)
-        per100 = (lambda n: round(100 * n / len(ws), 1)) if len(ws) >= 15 else (lambda n: None)
+        per100 = (lambda n: round(100 * n / len(ws), 1)) if len(ws) >= TEXT_MIN_WORDS else (lambda n: None)
         msg = {
             "kind": "speaking", "t_s": t, "wpm": round(60 * words / speech_s, 1) if speech_s > 3 and words > 0 else None,   # no words = no transcript yet (ASR missing), not "0 wpm"
             "fillers_per_100w": per100(filler_count(ws, text)),
@@ -365,14 +379,18 @@ class InterviewSpeech:
     def answer_end(self, ev: dict):
         t_start = time.time()
         ask, end = ev["ask_s"], ev["end_s"]
-        cand = self.track("candidate")
-        inter = self.tracks.get("interviewer")
         clip_t0, clip_t1 = ask, end + 0.5
-        audio = cand.clip(clip_t0, clip_t1)
-        cand_segs = cand.segs(ask, clip_t1)
-        q_end = question_end(inter.segs(ask - 1, end) if inter else [], ask, end)
-        transcript = " ".join(f["text"] for f in cand.finals if ask - 0.5 <= f["start_s"] <= end + 1)
-        events = self.audio_events(cand, q_end, end)
+        with self.lock:             # a consistent snapshot of the tracks; the slow model work below runs without the lock
+            cand = self.track("candidate")
+            inter = self.tracks.get("interviewer")
+            audio = cand.clip(clip_t0, clip_t1)
+            cand_segs = cand.segs(ask, clip_t1)
+            q_end = question_end(inter.segs(ask - 1, end) if inter else [], ask, end)
+            transcript = " ".join(f["text"] for f in cand.finals if ask - 0.5 <= f["start_s"] <= end + 1)
+            answer_clip = cand.clip(q_end, end) if end - q_end >= 1.0 else None
+            conv = self.answer_conversation(cand, inter, q_end, end)
+            speech = cand.speech_between(clip_t0, clip_t1)
+        events = self.audio_events(answer_clip, q_end, end)
         beh = answer_behaviour(f"{self.id}_A{ev['question_ref']}", audio, transcript, cand_segs, q_end, end, clip_t0, events)
         ans = None
         if transcript.strip():
@@ -383,8 +401,6 @@ class InterviewSpeech:
         with self.db.session() as s:
             wins = [row_dict(w) for w in s.scalars(select(WindowScore).where(
                 WindowScore.interview_id == self.id, WindowScore.end_s > ask, WindowScore.start_s < end))]
-        conv = self.answer_conversation(cand, inter, q_end, end)
-        speech = cand.speech_between(clip_t0, clip_t1)
         feats = assemble(beh, ans, wins, conv, ev.get("question_id", ""), transcript, audio, speech, None)
         fus = self.m.fusion_scores(feats)
         flags = self.rule_flags(beh, ans, wins)
@@ -422,10 +438,9 @@ class InterviewSpeech:
         self.bus.publish(f"analytics:{self.id}", clean_json(out))
         self.bus.set_metric("e2e_answer_analysis", (time.time() - t_start) * 1000)
 
-    def audio_events(self, cand: Track, t0: float, t1: float) -> dict:
-        if self.m.disfluency is None or t1 - t0 < 1.0:
+    def audio_events(self, x: np.ndarray | None, t0: float, t1: float) -> dict:
+        if self.m.disfluency is None or x is None or t1 - t0 < 1.0:
             return {}
-        x = cand.clip(t0, t1)
         wins = [x[i:i + 3 * SR] for i in range(0, max(len(x) - SR, 1), int(1.5 * SR))]
         wins = [np.pad(w, (0, 3 * SR - len(w))) for w in wins]
         with Timer(self.bus, "disfluency"):
@@ -484,6 +499,39 @@ def run(bus=None, db=None, stop=lambda: False):
                 traceback.print_exc()
 
 
+def submit_answer(sp: "InterviewSpeech", ev: dict):
+    """Analyse one finished answer on the analysis thread (the audio loop must not wait for it)."""
+    def job():
+        try:
+            sp.answer_end(ev)
+        except Exception:  # noqa: BLE001 - one bad answer must not stop the others
+            import traceback
+
+            traceback.print_exc()
+
+    _ANALYSIS.submit(job)
+
+
+def wait_for_analysis(timeout: float = 120.0):
+    """Block until every submitted answer analysis has finished (used by tests and at shutdown)."""
+    _ANALYSIS.submit(lambda: None).result(timeout=timeout)
+
+
+def drain_audio(bus, live, cursors, iid: int, limit_s: float = 90.0):
+    """Process every audio chunk of this interview that is still queued on the bus. The stop message sits on a different
+    stream and is read first, so without this the end of a slowly processed interview would be thrown away."""
+    keys = [k for k in cursors if k.startswith(f"audio:{iid}:")]
+    deadline = time.time() + limit_s
+    while keys and iid in live and time.time() < deadline:
+        items = bus.read({k: cursors[k] for k in keys}, 20, 200)
+        if not items:
+            break
+        for name, mid, msg, binary in items:
+            cursors[name] = mid
+            if binary is not None:
+                live[iid].audio(name.split(":", 2)[2], msg, binary)
+
+
 def handle(name, msg, binary, bus, db, models, live, cursors, mid: str | None = None):
     """One bus message: control events (start / answer_end / stop) or a 640 ms audio chunk."""
     if name == "control":
@@ -502,8 +550,9 @@ def handle(name, msg, binary, bus, db, models, live, cursors, mid: str | None = 
         elif msg["type"] == "answer_end" and iid in live:
             if live[iid].open_q and live[iid].open_q.get("question_ref") == msg.get("question_ref"):
                 live[iid].open_q = None
-            live[iid].answer_end(msg)
+            submit_answer(live[iid], msg)
         elif msg["type"] == "stop" and iid in live:
+            drain_audio(bus, live, cursors, iid)           # audio that was still queued when the stop arrived
             for t in live[iid].tracks.values():
                 if t.asr is not None:
                     for r in t.asr.flush():

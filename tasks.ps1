@@ -56,10 +56,13 @@ switch ($Target) {
     "demo-webcam" { & $Py -m ml.vision.demo_webcam }
     "demo-mic" { & $Py -m ml.speech.demo_mic }
     # ---- Stage 9: product
-    "api" { & $Py -m uvicorn backend.main:app --host 0.0.0.0 --port 8020 }
-    "workers" { & $Py -m backend.workers.run_all }
+    # These run for hours and their libraries write harmless INFO / WARNING lines to stderr (MediaPipe, Hugging Face). The
+    # script stops on errors by default, and with output redirected (> log, | Tee-Object) the first stderr line would then
+    # kill the process silently, so these three targets run with errors non-fatal.
+    "api" { $ErrorActionPreference = "Continue"; & $Py -m uvicorn backend.main:app --host 0.0.0.0 --port 8020 }
+    "workers" { $ErrorActionPreference = "Continue"; $env:PYTHONFAULTHANDLER = "1"; & $Py -m backend.workers.run_all }
     "web-install" { Push-Location frontend; npm install; Pop-Location }
-    "web" { Push-Location frontend; npm run dev; Pop-Location }
+    "web" { $ErrorActionPreference = "Continue"; Push-Location frontend; npm run dev; Pop-Location }
     "start-all" {
         Set-LanIp
         docker compose up -d --wait postgres redis                  # --wait: returns when postgres/redis are healthy

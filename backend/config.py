@@ -40,6 +40,8 @@ class Settings:
     face_backend: str = field(default_factory=lambda: os.environ.get("MBAS_FACE", "own").strip().lower())
     # detect the interviewer's questions from their voice: off | auto (only for Meet / Zoom / Teams interviews) | on
     auto_questions: str = field(default_factory=lambda: os.environ.get("MBAS_AUTO_QUESTIONS", "auto").strip().lower())
+    # Whisper deletes spoken "um" / "uh" unless prompted: "fillers" (default) keeps them, "off" uses no prompt
+    whisper_prompt: str = field(default_factory=lambda: os.environ.get("MBAS_WHISPER_PROMPT", "fillers").strip().lower())
     whisper_model: str = field(default_factory=lambda: os.environ.get("MBAS_WHISPER_MODEL", "base.en").strip())
 
 

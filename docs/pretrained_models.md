@@ -26,6 +26,12 @@ The audio itself was checked and is clean (normal level, no clipping or dropped 
   repetitive loops and stock phrases on very short clips are dropped; silence produced no text in our test.
 - The cockpit shows "Speech recognition here is a pre-trained model (Whisper)" when it is active.
 - If the package or model is missing, the worker falls back to our own recogniser and says so in its log.
+- **Fillers.** Whisper leaves out spoken "um" and "uh" unless it is prompted. The worker gives it a short prompt full of
+  fillers, so "um", "uh", "hmm" and "like" reach the transcript and the filler rate is not always zero. If it ever echoes
+  the prompt back on noise, that text is discarded. `MBAS_WHISPER_PROMPT=off` in `.env` turns the prompt off.
+- **Runs in the background.** Whisper transcribes on its own thread. The audio loop never waits for it, so a slow recogniser
+  delays the words a little but does not lose audio. At the end of an interview the worker processes any audio still
+  queued and waits for Whisper to finish.
 
 ## Setup
 
@@ -72,3 +78,15 @@ unmet requirement; that is expected.) Put `face_landmarker.task` (3.7 MB, Google
 
 **Sign conventions** (checked against the nose position in real frames): head yaw is positive towards the subject's left,
 head pitch positive when looking down; gaze uses the convention of `ScreenCalibration` (pitch negative looking down).
+
+
+## Why the transcript fell behind on a real Meet call (fixed)
+
+A real Meet interview (196 s) had a transcript and speech stats that stopped at 106 s. Cause: answer analysis takes about
+10 s (the disfluency model alone 6 s) and ran inside the loop that reads the audio, so every question stalled the loop; at
+the end the worker handled the "stop" message before the audio still waiting in the queue and threw that audio away.
+Now answer analysis and Whisper run on their own threads, and queued audio is processed before an interview is closed.
+The same recording replayed in real time through the fixed workers: transcript to 201 s (was 106 s), candidate words 135
+(was 61), answers analysed 4 (was 1), filler / hedge rate present in 34 of 40 speech-stat rows (was 7 of 21).
+Filler and hedge rates are now computed over the last minute of words, from 8 words on (before: 30 s and 15 words, which
+usually gave "no value").
