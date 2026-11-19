@@ -69,7 +69,7 @@ Start everything with `.\tasks.ps1 start-all` (needs Docker Desktop running), th
 | Dashboard | interviewer | create interviews or meetings, copy the candidate link |
 | Candidate room | candidate | consent, camera/mic check, video call, screen share; **the candidate never sees any analytics** |
 | Cockpit | interviewer | live video, live transcript with fillers highlighted, attention / engagement / hesitation gauges, gaze plot, alerts (looking away, reading from notes), question list, per-answer scores with reasons, follow-up suggestions, confidence-vs-content nudge |
-| External call | interviewer | run the interview on **Google Meet, Zoom (browser or desktop app) or Teams**; MBAS captures the call and analyses it the same way |
+| Meeting platform | interviewer | run the interview on **Google Meet, Zoom (browser or desktop app) or Teams**; MBAS captures the call and analyses it the same way |
 | Meeting mode | meeting host | per-person talk time, engagement and contribution balance |
 | Report | interviewer | see below |
 | Feedback | candidate | strengths and 3 improvement tips that the interviewer reviewed and released |
@@ -89,7 +89,7 @@ Start everything with `.\tasks.ps1 start-all` (needs Docker Desktop running), th
 ## 4. Work done in the latest session (18-19 Nov 2026)
 
 1. Finished training: disfluency 14 → 25 epochs (F1 0.460 → 0.467); ASR 13 → 40 epochs (WER 0.345 → 0.137 on test).
-2. Zoom and Teams support (Meet already existed): one "External call" menu in the cockpit.
+2. Zoom and Teams support (Meet already existed): choose the *Meeting platform* when creating the session; the cockpit then shows *Connect Meet / Zoom / Teams*.
 3. Detailed rated report: scorecard + grade, all the behaviour metrics above, confidence-vs-content, under pressure,
    moments to rewatch, print-all PDF.
 4. New signals: voice-break and jitter detection (tuned on real speech so normal speech scores near zero), longest

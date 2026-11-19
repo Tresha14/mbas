@@ -6,6 +6,18 @@ $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 $Py = ".\.venv\Scripts\python.exe"
 
+# LiveKit must announce an address browsers will send video to. Chrome never uses 127.0.0.1 for WebRTC, so when
+# .env has no real LAN address, use this laptop's current Wi-Fi / Ethernet IPv4 (the interface with the default
+# route). Re-detected on every start, so changing networks or laptops just works.
+function Set-LanIp {
+    $fromEnv = (Get-Content .env -ErrorAction SilentlyContinue | Where-Object { $_ -match '^MBAS_LAN_IP=' }) -replace '^MBAS_LAN_IP=', ''
+    if ($fromEnv -and $fromEnv -notmatch '^127\.') { $env:MBAS_LAN_IP = $fromEnv.Trim(); return }
+    $route = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1
+    $ip = if ($route) { (Get-NetIPAddress -InterfaceIndex $route.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue).IPAddress | Select-Object -First 1 }
+    if ($ip) { $env:MBAS_LAN_IP = $ip; Write-Output "LiveKit address: $ip (detected)" }
+    else { Write-Warning "No network found: video calls in Chrome need a Wi-Fi / LAN connection (127.0.0.1 is not used by browsers)." }
+}
+
 switch ($Target) {
     "venv" { python -m venv .venv }
     "install" {
@@ -13,7 +25,7 @@ switch ($Target) {
         & $Py -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
         & $Py -m pip install -r requirements.txt
     }
-    "up" { docker compose up -d; docker compose ps }
+    "up" { Set-LanIp; docker compose up -d --force-recreate livekit caddy; docker compose up -d; docker compose ps }
     "down" { docker compose down }
     "ps" { docker compose ps }
     "questions" { & $Py -m tools.make_questions }
@@ -49,11 +61,13 @@ switch ($Target) {
     "web-install" { Push-Location frontend; npm install; Pop-Location }
     "web" { Push-Location frontend; npm run dev; Pop-Location }
     "start-all" {
-        docker compose up -d --wait postgres redis livekit caddy   # --wait: returns when postgres/redis are healthy
+        Set-LanIp
+        docker compose up -d --wait postgres redis                  # --wait: returns when postgres/redis are healthy
+        docker compose up -d --force-recreate livekit caddy         # recreate so they pick up the current address
         Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$PSScriptRoot'; .\tasks.ps1 api"
         Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$PSScriptRoot'; .\tasks.ps1 workers"
         Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$PSScriptRoot'; .\tasks.ps1 web"
-        Write-Output "MBAS: http://localhost:3020 (this laptop)  |  https://<LAN_IP>:8444 (second laptop)"
+        Write-Output "InterLens: http://localhost:3020 (this laptop)  |  https://$($env:MBAS_LAN_IP):8444 (second laptop)"
     }
     # ---- Stage 10: evaluation + documents
     "reports" { & $Py -m tools.model_report; & $Py -m tools.bias_check; & $Py -m tools.user_study --demo }

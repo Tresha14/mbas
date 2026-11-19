@@ -43,6 +43,8 @@ class Interview(Base):
     started_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ended_at: Mapped[dt.datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     notes: Mapped[str] = mapped_column(Text, default="")
+    # where the call happens: interlens (our own room, candidate joins by link) | meet | zoom_web | zoom_app | teams
+    platform: Mapped[str] = mapped_column(String(20), default="interlens", server_default="interlens")
     created_at: Mapped[dt.datetime] = mapped_column(DateTime(timezone=True), default=now)
     participants: Mapped[list["Participant"]] = relationship(back_populates="interview", cascade="all, delete-orphan")
 
@@ -168,7 +170,23 @@ class Database:
         if url.startswith("sqlite"):
             event.listen(self.engine, "connect", lambda c, _: c.execute("pragma foreign_keys=on"))
         Base.metadata.create_all(self.engine)
+        self._add_missing_columns()
         self.Session = sessionmaker(self.engine, expire_on_commit=False)
+
+    # columns added after a table first existed: create_all() only creates missing tables, so older databases get
+    # these with ALTER TABLE (PostgreSQL and SQLite both accept this form)
+    ADDED_COLUMNS = {"interviews": {"platform": "VARCHAR(20) NOT NULL DEFAULT 'interlens'"}}
+
+    def _add_missing_columns(self) -> None:
+        from sqlalchemy import inspect, text
+
+        insp = inspect(self.engine)
+        with self.engine.begin() as con:
+            for table, cols in self.ADDED_COLUMNS.items():
+                have = {c["name"] for c in insp.get_columns(table)}
+                for name, ddl in cols.items():
+                    if name not in have:
+                        con.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
 
     def session(self) -> Session:
         return self.Session()

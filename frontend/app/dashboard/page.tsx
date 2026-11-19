@@ -8,6 +8,7 @@ import { Header, PageTitle } from "@/components/shell";
 import { Badge, Button, Card, Dot, Empty, Input, Label, Segmented, Sheet } from "@/components/ui";
 import { copyText } from "@/lib/clipboard";
 import { api, claims, type Interview } from "@/lib/api";
+import { PLATFORMS, type Platform } from "@/lib/room";
 
 function when(iv: Interview): string {
   const d = iv.scheduled_at ?? iv.started_at ?? null;
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const [candidate, setCandidate] = useState("");
   const [at, setAt] = useState("");
   const [mode, setMode] = useState("interview");
+  const [platform, setPlatform] = useState<Platform>("interlens");
   const [copied, setCopied] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
@@ -45,9 +47,9 @@ export default function Dashboard() {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const iv = await api.create({ title, mode, candidate_name: candidate || undefined, scheduled_at: at ? new Date(at).toISOString() : null });
+      const iv = await api.create({ title, mode, platform, candidate_name: candidate || undefined, scheduled_at: at ? new Date(at).toISOString() : null });
       setItems([iv, ...(items ?? [])]);
-      setTitle(""); setCandidate(""); setAt(""); setOpen(false);
+      setTitle(""); setCandidate(""); setAt(""); setPlatform("interlens"); setOpen(false);
     } catch (err) {
       setError((err as Error).message);
     }
@@ -88,14 +90,14 @@ export default function Dashboard() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{iv.title}</p>
-                    <p className="text-[13px] text-muted">{iv.candidate_name ? `${iv.candidate_name} · ` : ""}{when(iv)}</p>
+                    <p className="text-[13px] text-muted">{iv.candidate_name ? `${iv.candidate_name} · ` : ""}{when(iv)} · {PLATFORMS[iv.platform ?? "interlens"].short}</p>
                   </div>
                   <span className="flex w-28 items-center gap-2 text-[13px] text-muted">
                     <Dot tone={iv.status === "live" ? "good" : iv.status === "ended" ? "neutral" : "accent"} pulse={iv.status === "live"} />
                     {iv.status === "live" ? "Live now" : iv.status === "ended" ? "Completed" : "Upcoming"}
                   </span>
                   <div className="flex items-center gap-1.5">
-                    {iv.status !== "ended" && (
+                    {iv.status !== "ended" && (iv.platform ?? "interlens") === "interlens" && (
                       <Button variant="ghost" size="sm" onClick={() => copy(iv)}>
                         {copied === iv.id ? <><Check size={14} /> Copied</> : <><Link2 size={14} /> Invite link</>}
                       </Button>
@@ -119,7 +121,23 @@ export default function Dashboard() {
           <div><Label htmlFor="t">Title</Label><Input id="t" placeholder="Software engineer · round 1" value={title} onChange={(e) => setTitle(e.target.value)} required /></div>
           {mode === "interview" && <div><Label htmlFor="c">Candidate name</Label><Input id="c" placeholder="Optional" value={candidate} onChange={(e) => setCandidate(e.target.value)} /></div>}
           <div><Label htmlFor="w">Date and time</Label><Input id="w" type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} /></div>
-          <Badge tone="neutral" className="leading-relaxed">The candidate sees only a normal video call. Analytics stay with you.</Badge>
+          <div>
+            <Label>Meeting platform</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(Object.keys(PLATFORMS) as Platform[]).map((k) => (
+                <button type="button" key={k} onClick={() => setPlatform(k)} aria-pressed={platform === k}
+                  className={`rounded-2xl border px-3.5 py-3 text-left transition ${k === "interlens" ? "col-span-2" : ""} ${platform === k
+                    ? "border-accent bg-accent-soft/60 ring-1 ring-accent" : "border-line hover:border-accent/50"}`}>
+                  <span className="block text-[14px] font-medium">{PLATFORMS[k].label}</span>
+                  <span className="mt-0.5 block text-[12px] leading-snug text-muted">{PLATFORMS[k].hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <Badge tone="neutral" className="leading-relaxed">
+            {platform === "interlens" ? "The candidate sees only a normal video call. Analytics stay with you."
+              : `Host the call on ${PLATFORMS[platform].label} as usual. In the cockpit, press “Connect ${PLATFORMS[platform].short}” and the analysis starts; the candidate installs nothing.`}
+          </Badge>
           <Button className="w-full" size="lg">Create session</Button>
         </form>
       </Sheet>

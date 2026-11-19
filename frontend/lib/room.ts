@@ -51,6 +51,16 @@ export const CAPTURE_PREFIX = "call-capture-";
 
 export type CallSource = "meet" | "zoom_web" | "zoom_app" | "teams";
 
+/** Where a session's call happens, chosen when the session is created. */
+export type Platform = "interlens" | CallSource;
+export const PLATFORMS: Record<Platform, { label: string; short: string; hint: string }> = {
+  interlens: { label: "InterLens room", short: "InterLens", hint: "Send the candidate a link; they join in the browser." },
+  meet: { label: "Google Meet", short: "Meet", hint: "You host on Meet; InterLens listens in from your Meet tab." },
+  zoom_web: { label: "Zoom (browser)", short: "Zoom", hint: "Zoom opened in Chrome with “Join from your browser”." },
+  zoom_app: { label: "Zoom (desktop app)", short: "Zoom app", hint: "The Zoom app; InterLens captures your screen and system sound." },
+  teams: { label: "Microsoft Teams", short: "Teams", hint: "Teams opened in the browser." },
+};
+
 /** How each external call is captured, and what the interviewer has to pick in Chrome's share dialog. */
 export const CALL_SOURCES: Record<CallSource, { label: string; platform: "meet" | "zoom" | "teams"; surface: "browser" | "monitor"; steps: string }> = {
   meet: { label: "Google Meet", platform: "meet", surface: "browser",

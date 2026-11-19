@@ -222,3 +222,22 @@ def test_speech_worker_reads_audio_from_the_start_message(env, monkeypatch):
     speech_worker.handle("control", {"type": "start", "interview_id": 7}, None, bus, db, None, {}, cursors, start_id)
     got = bus.read({"audio:7:candidate": cursors["audio:7:candidate"]}, 0)
     assert [mid for _, mid, _, _ in got] == [early]
+
+
+def test_session_platform_and_column_added_to_old_database(tmp_path):
+    """Sessions remember where the call happens (our room, Meet, Zoom, Teams); a database created before the column
+    existed gets it on startup."""
+    import sqlite3
+
+    path = tmp_path / "old.db"
+    Database(f"sqlite:///{path}")
+    con = sqlite3.connect(path)
+    con.execute("ALTER TABLE interviews DROP COLUMN platform")       # an old database without the column
+    con.commit()
+    con.close()
+    db = Database(f"sqlite:///{path}")
+    c = TestClient(create_app(Settings(database_url=f"sqlite:///{path}", redis_url="memory://"), db, MemoryBus()))
+    h = _host(c)
+    assert c.post("/api/interviews", json={"title": "x"}, headers=h).json()["platform"] == "interlens"
+    assert c.post("/api/interviews", json={"title": "y", "platform": "zoom_app"}, headers=h).json()["platform"] == "zoom_app"
+    assert c.post("/api/interviews", json={"title": "z", "platform": "skype"}, headers=h).status_code == 422

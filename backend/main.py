@@ -10,7 +10,7 @@ import datetime as dt
 import json
 import secrets
 import time
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,6 +42,7 @@ class InterviewIn(BaseModel):
     mode: str = "interview"
     candidate_name: str | None = None
     scheduled_at: dt.datetime | None = None
+    platform: Literal["interlens", "meet", "zoom_web", "zoom_app", "teams"] = "interlens"
 
 
 class JoinIn(BaseModel):
@@ -153,7 +154,7 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
         with db.session() as s:
             iv = Interview(owner_id=int(c["sub"]), title=body.title, mode=mode, room=f"mbas-{secrets.token_hex(6)}",
                            invite_token=secrets.token_urlsafe(24), candidate_name=body.candidate_name,
-                           scheduled_at=body.scheduled_at)
+                           scheduled_at=body.scheduled_at, platform=body.platform)
             s.add(iv)
             s.commit()
             return _iv(iv, cfg)

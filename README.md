@@ -231,8 +231,8 @@ second laptop: `https://<LAN_IP>:8444/join/...` after setting `MBAS_LAN_IP` and 
 | `/report/<id>` | interviewer | final rating + grade (A-E) from six dimensions; behaviour details (blink rate, eye contact, glances, gaze steadiness, saccades, iris movement, reading pattern; pace, expressiveness, voice breaks, jitter; filler words with a per-word breakdown, overused words, hedges, repeats, stretched sounds; response delay, long / very long pauses, longest silence) each with a typical range and status; confidence-vs-content matrix; "under pressure" comparison of easier vs harder questions; moments to rewatch; radar, replay synced with the transcript, per-question cards, follow-ups, PDF export of every tab, candidate-feedback editor + release |
 | `/feedback/<token>` | candidate | released strengths + 3 improvements with timestamps and tips |
 
-**Interviews held on Google Meet, Zoom or Teams.** In the cockpit, *External call* captures the call from the
-interviewer's computer and publishes it into the MBAS room as the candidate, so the hidden bot and every model run as
+**Interviews held on Google Meet, Zoom or Teams.** Pick the *Meeting platform* when creating the session; in the
+cockpit, *Connect Meet / Zoom / Teams* captures the call from the interviewer's computer and publishes it into the MBAS room as the candidate, so the hidden bot and every model run as
 usual and the candidate installs nothing. Meet, Zoom in the browser and Teams in the browser: pick the call's tab and
 keep "Also share tab audio". Zoom desktop app: pick "Entire screen" and tick "Also share system audio" (every sound
 on the computer is then analysed, so mute other apps). Pin the candidate / use speaker view: the vision models follow

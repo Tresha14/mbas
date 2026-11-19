@@ -13,7 +13,7 @@ import { Header, VideoSlot } from "@/components/shell";
 import { Badge, Button, Card, cn, Disclosure, Dot, Empty, mmss, scoreTone, SectionLabel, Segmented, Sheet, Tabs, Textarea } from "@/components/ui";
 import { useAnalytics, type AnswerMsg, type Line } from "@/lib/analytics";
 import { api, type Interview, type Question } from "@/lib/api";
-import { CALL_SOURCES, CAPTURE_PREFIX, captureCall, joinRoom, roleOf, type CallCapture, type CallSource } from "@/lib/room";
+import { CALL_SOURCES, CAPTURE_PREFIX, captureCall, joinRoom, PLATFORMS, roleOf, type CallCapture, type CallSource } from "@/lib/room";
 
 function TranscriptLine({ l, active }: { l: Line; active: boolean }) {
   const words = l.words?.length ? l.words.map((w) => w.word) : l.text.split(" ");
@@ -62,6 +62,7 @@ export default function Cockpit() {
   const [capture, setCapture] = useState<CallCapture | null>(null);
   const [callPicker, setCallPicker] = useState(false);
   const [captureMsg, setCaptureMsg] = useState("");
+  const external: CallSource | null = iv?.platform && iv.platform !== "interlens" ? iv.platform : null;
   const { state, error } = useAnalytics(iv?.id ?? null);
 
   useEffect(() => {
@@ -159,21 +160,29 @@ export default function Cockpit() {
         <div className="flex items-center gap-3">
           {iv?.status === "live" && <span className="flex items-center gap-2 text-[13px] tabular-nums text-muted"><Dot tone="bad" pulse /> {mmss(elapsed)}</span>}
           {state.models && !state.connected && <Badge tone="warn">reconnecting</Badge>}
-          {iv && iv.status !== "ended" && (
-            <Button size="sm" variant={capture ? "danger" : "outline"} onClick={() => (capture ? capture.stop() : setCallPicker(true))}
-              title="Run the interview on Google Meet, Zoom or Teams and analyse it here">
-              <Video size={14} /> {capture ? `Stop ${CALL_SOURCES[capture.source].label.split(" (")[0]} capture` : "External call"}
-            </Button>)}
+          {iv && iv.status !== "ended" && (capture ? (
+            <Button size="sm" variant="danger" onClick={() => capture.stop()}>
+              <Video size={14} /> Disconnect {PLATFORMS[capture.source].short}
+            </Button>
+          ) : external ? (
+            <Button size="sm" variant="outline" onClick={() => startCall(external)}>
+              <Video size={14} /> Connect {PLATFORMS[external].short}
+            </Button>
+          ) : (
+            <Button size="sm" variant="ghost" onClick={() => setCallPicker(true)} title="Hold this interview on Google Meet, Zoom or Teams instead">
+              <Video size={14} /> Meeting platform
+            </Button>
+          ))}
           {iv?.status === "ended"
             ? <Link href={`/report/${id}`}><Button size="sm"><FileText size={14} /> View report</Button></Link>
             : <Button size="sm" variant={iv?.status === "live" ? "danger" : "accent"} onClick={startStop}>
                 {iv?.status === "live" ? <><Square size={13} /> End interview</> : <><Play size={13} /> Start analysis</>}
               </Button>}
         </div>} />
-      <Sheet open={callPicker} onClose={() => setCallPicker(false)} title="Analyse a call held elsewhere">
+      <Sheet open={callPicker} onClose={() => setCallPicker(false)} title="Meeting platform">
         <p className="text-[13px] text-muted">
-          Hold the interview on another app as usual. InterLens captures the call from this computer and analyses the candidate
-          exactly like in its own room; the candidate does not need to install or join anything.
+          Holding this interview on another app instead? Pick it, and InterLens listens in from this computer and analyses
+          the candidate exactly like in its own room. The candidate installs nothing.
         </p>
         <div className="mt-5 space-y-3">
           {(Object.keys(CALL_SOURCES) as CallSource[]).map((k) => (
@@ -198,7 +207,20 @@ export default function Cockpit() {
             </div>
             {(captureMsg || actionError || error) && <span className="text-[13px] text-bad">{captureMsg || actionError || error}</span>}
           </div>
-          {callWarning && <p className="rounded-2xl bg-warn/10 px-4 py-3 text-[13px] text-warn">{callWarning}</p>}
+          {callWarning && !external && <p className="rounded-2xl bg-warn/10 px-4 py-3 text-[13px] text-warn">{callWarning}</p>}
+          {external && !capture && iv?.status !== "ended" && (
+            <Card className="flex flex-wrap items-center gap-6">
+              <div className="min-w-64 flex-1">
+                <SectionLabel>This interview runs on {PLATFORMS[external].label}</SectionLabel>
+                <ol className="mt-2 list-decimal space-y-1 pl-5 text-[14px] text-muted">
+                  <li>Start the call on {PLATFORMS[external].label} and admit the candidate. Pin them or use speaker view.</li>
+                  <li>Press <b className="font-medium text-fg">Connect {PLATFORMS[external].short}</b>. {CALL_SOURCES[external].steps}</li>
+                  <li>Press <b className="font-medium text-fg">Start analysis</b>, then ask questions from the list as usual.</li>
+                </ol>
+              </div>
+              <Button variant="accent" onClick={() => startCall(external)}><Video size={15} /> Connect {PLATFORMS[external].short}</Button>
+            </Card>
+          )}
           {state.models?.vision === false && (
             <p className="rounded-2xl bg-warn/10 px-4 py-3 text-[13px] text-warn">
               Camera analysis is off because the vision models are not available. Attention, gaze, blinks and look-away alerts will not appear. Speech analysis still works.

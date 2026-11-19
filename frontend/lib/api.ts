@@ -15,6 +15,7 @@ export interface Interview {
   candidate_link: string;
   invite_token: string;
   notes: string;
+  platform?: "interlens" | "meet" | "zoom_web" | "zoom_app" | "teams";
 }
 
 export interface Question {
@@ -95,7 +96,7 @@ export const api = {
   login: (email: string, password: string) => req<{ token: string }>("POST", "/api/auth/login", { email, password }),
   interviews: () => req<Interview[]>("GET", "/api/interviews"),
   interview: (id: number) => req<Interview>("GET", `/api/interviews/${id}`),
-  create: (body: { title: string; mode: string; candidate_name?: string; scheduled_at?: string | null }) =>
+  create: (body: { title: string; mode: string; candidate_name?: string; scheduled_at?: string | null; platform?: string }) =>
     req<Interview>("POST", "/api/interviews", body),
   questions: () => req<Question[]>("GET", "/api/questions"),
   join: (invite: string, name: string, consent: boolean) =>
