@@ -17,6 +17,7 @@ import numpy as np
 
 from backend.bus import make_bus
 from backend.config import settings
+from backend.config import settings
 from backend.db import Database, WindowScore, clean_json
 from backend.flags import raise_flag
 
@@ -29,7 +30,17 @@ class InterviewVision:
 
         backend = "onnx" if all((__import__("backend.inference", fromlist=["ONNX"]).ONNX / f"{n}.onnx").exists()
                                 for n in ("face_detector", "headpose", "gaze_iris")) else "torch"
-        self.pipe = VisionPipeline(backend, fps=10.0)
+        self.pretrained = False                  # True when the pre-trained MediaPipe face tracker is in use
+        self.pipe = None
+        if settings().face_backend == "mediapipe":
+            try:
+                from ml.vision.mediapipe_pipeline import MediaPipePipeline
+
+                self.pipe, self.pretrained = MediaPipePipeline(fps=10.0), True
+            except Exception as e:  # noqa: BLE001 - never leave the candidate without face tracking
+                print(f"[vision] MediaPipe unavailable ({type(e).__name__}: {e}); using our own face models", flush=True)
+        if self.pipe is None:
+            self.pipe = VisionPipeline(backend, fps=10.0)
         self.id, self.bus, self.db = interview_id, bus, db
         self.next_window = WIN_S
         self.last_gaze_pub = 0.0
@@ -103,7 +114,7 @@ def run(bus=None, db=None, stop=lambda: False):
                         # frames from the start message on (ids are time-based), not from when the models finished
                         # loading: frames sent meanwhile would otherwise be skipped
                         cursors[f"frames:{iid}"] = mid
-                        bus.publish(f"analytics:{iid}", {"kind": "status", "models": {"vision": True}})
+                        bus.publish(f"analytics:{iid}", {"kind": "status", "models": {"vision": True, "face_pretrained": live[iid].pretrained}})
                     except Exception as e:  # noqa: BLE001 - missing / untrained vision models must not kill the worker
                         print(f"[vision] disabled for interview {iid}: {e}", flush=True)
                         bus.publish(f"analytics:{iid}", {"kind": "status", "models": {"vision": False},

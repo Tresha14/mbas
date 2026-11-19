@@ -38,3 +38,6 @@ matplotlib>=3.8
 
 # Optional pre-trained speech recogniser (MBAS_ASR=whisper). NOT trained by us; see docs/pretrained_models.md
 faster-whisper>=1.2
+
+# Optional pre-trained face tracking (MBAS_FACE=mediapipe). Install with: pip install --no-deps mediapipe matplotlib
+# (--no-deps so it does not pull opencv-contrib-python on top of opencv-python). NOT trained by us; see docs/pretrained_models.md

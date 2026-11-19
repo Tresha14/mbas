@@ -36,6 +36,8 @@ class Settings:
     questions_path: Path = ROOT / "recorder" / "questions.json"
     # speech recogniser: "own" = our trained Conformer-CTC (default); "whisper" = pre-trained Whisper via faster-whisper
     asr_backend: str = field(default_factory=lambda: os.environ.get("MBAS_ASR", "own").strip().lower())
+    # face tracking: "own" = our trained detector / head-pose / gaze models (default); "mediapipe" = pre-trained MediaPipe
+    face_backend: str = field(default_factory=lambda: os.environ.get("MBAS_FACE", "own").strip().lower())
     # detect the interviewer's questions from their voice: off | auto (only for Meet / Zoom / Teams interviews) | on
     auto_questions: str = field(default_factory=lambda: os.environ.get("MBAS_AUTO_QUESTIONS", "auto").strip().lower())
     whisper_model: str = field(default_factory=lambda: os.environ.get("MBAS_WHISPER_MODEL", "base.en").strip())

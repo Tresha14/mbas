@@ -19,7 +19,7 @@ initialisation on our own recorded dataset plus public raw datasets.
 | 2 | Dataset protocol, annotation, public datasets, splits | tools done; recording + labelling in progress (see `docs/dataset_card.md`) |
 | 3 | Data pipeline + features (`ml/common`) | done: `.\tasks.ps1 data` |
 | 4–5 | Vision: face + landmarks, head pose, gaze/iris, engagement, attention, ONNX export | trained on WIDER / MPIIGaze / synthetic; CNN-GRU waits for DAiSEE or our labels |
-| 6 | VAD + Conformer-CTC ASR + our 4-gram LM + streaming + mic demo | done: ASR 40 epochs on LibriSpeech, test-clean WER 0.137 with our LM; optional pre-trained Whisper backend for real microphones (`MBAS_ASR=whisper`, see `docs/pretrained_models.md`) |
+| 6 | VAD + Conformer-CTC ASR + our 4-gram LM + streaming + mic demo | done: ASR 40 epochs on LibriSpeech, test-clean WER 0.137 with our LM; optional pre-trained Whisper backend for real microphones (`MBAS_ASR=whisper`) and optional MediaPipe face tracking (`MBAS_FACE=mediapipe`), see `docs/pretrained_models.md`) |
 | 7 | Disfluency CRNN, pauses, prosody, speaking patterns, conversation, behaviour JSON | done (SEP-28k + synthetic) |
 | 8 | Answer-quality transformer vs TF-IDF, fusion + ablation + explanations, meeting head on AMI | done (synthetic + AMI) |
 | 9 | FastAPI + workers + LiveKit bot + Next.js cockpit / candidate room / meeting mode | done |

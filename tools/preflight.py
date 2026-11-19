@@ -46,6 +46,14 @@ def check_files(rows: list[tuple[str, str, str]]) -> None:
             rows.append((WARN, "speech recogniser", "MBAS_ASR=whisper but faster-whisper is not installed: pip install faster-whisper (our own ASR is used)"))
     else:
         rows.append((OK, "speech recogniser", "our own Conformer-CTC (set MBAS_ASR=whisper for the pre-trained Whisper)"))
+    if os.environ.get("MBAS_FACE", "own").lower() == "mediapipe":
+        from ml.vision.mediapipe_pipeline import available
+
+        ok, why = available()
+        rows.append((OK, "face tracking", "MediaPipe (pre-trained, optional)") if ok
+                    else (WARN, "face tracking", f"MBAS_FACE=mediapipe but {why}; our own models are used"))
+    else:
+        rows.append((OK, "face tracking", "our own models (set MBAS_FACE=mediapipe for the pre-trained MediaPipe)"))
     onnx = ROOT / "ml" / "export" / "onnx"
     n = len(list(onnx.glob("*.onnx"))) if onnx.exists() else 0
     rows.append((OK if n else WARN, "ONNX exports", f"{n} files" if n else "none: the PyTorch fallback is used (slower)"))

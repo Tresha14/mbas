@@ -214,7 +214,7 @@ export function SignalHealth({ state }: { state: State }) {
   const inter = h?.mics.interviewer;
 
   const face: [Tone, string] = gaze.length === 0 ? ["neutral", "Waiting for the camera"]
-    : gaze.some((g) => g.face) ? ["good", "Face detected"] : ["bad", "No face in frame: ask the candidate to face the camera"];
+    : gaze.some((g) => g.face) ? ["good", state.models?.face_pretrained ? "Face detected (MediaPipe)" : "Face detected"] : ["bad", "No face in frame: ask the candidate to face the camera"];
   const mic = (m: typeof cand, who: string): [Tone, string] => !m ? ["neutral", `Waiting for ${who} audio`]
     : m.listening_s >= 6 && m.silent_s >= 6 ? ["bad", `No sound from ${who} microphone for ${Math.round(m.silent_s)} s: muted or not working`]
     : ["good", `${who} microphone is live`];
