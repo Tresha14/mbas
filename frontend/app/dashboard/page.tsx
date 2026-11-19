@@ -47,7 +47,7 @@ export default function Dashboard() {
   async function create(e: React.FormEvent) {
     e.preventDefault();
     try {
-      const iv = await api.create({ title, mode, platform, candidate_name: candidate || undefined, scheduled_at: at ? new Date(at).toISOString() : null });
+      const iv = await api.create({ title, mode, platform: mode === "meeting" ? "interlens" : platform, candidate_name: candidate || undefined, scheduled_at: at ? new Date(at).toISOString() : null });
       setItems([iv, ...(items ?? [])]);
       setTitle(""); setCandidate(""); setAt(""); setPlatform("interlens"); setOpen(false);
     } catch (err) {
@@ -90,7 +90,7 @@ export default function Dashboard() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{iv.title}</p>
-                    <p className="text-[13px] text-muted">{iv.candidate_name ? `${iv.candidate_name} · ` : ""}{when(iv)} · {PLATFORMS[iv.platform ?? "interlens"].short}</p>
+                    <p className="text-[13px] text-muted">{iv.candidate_name ? `${iv.candidate_name} · ` : ""}{when(iv)}{iv.mode === "interview" ? ` · ${PLATFORMS[iv.platform ?? "interlens"].short}` : ""}</p>
                   </div>
                   <span className="flex w-28 items-center gap-2 text-[13px] text-muted">
                     <Dot tone={iv.status === "live" ? "good" : iv.status === "ended" ? "neutral" : "accent"} pulse={iv.status === "live"} />
@@ -121,7 +121,7 @@ export default function Dashboard() {
           <div><Label htmlFor="t">Title</Label><Input id="t" placeholder="Software engineer · round 1" value={title} onChange={(e) => setTitle(e.target.value)} required /></div>
           {mode === "interview" && <div><Label htmlFor="c">Candidate name</Label><Input id="c" placeholder="Optional" value={candidate} onChange={(e) => setCandidate(e.target.value)} /></div>}
           <div><Label htmlFor="w">Date and time</Label><Input id="w" type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} /></div>
-          <div>
+          {mode === "interview" && <div>
             <Label>Meeting platform</Label>
             <div className="grid grid-cols-2 gap-2">
               {(Object.keys(PLATFORMS) as Platform[]).map((k) => (
@@ -133,9 +133,10 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
-          </div>
+          </div>}
           <Badge tone="neutral" className="leading-relaxed">
-            {platform === "interlens" ? "The candidate sees only a normal video call. Analytics stay with you."
+            {mode === "meeting" ? "Meetings run in the InterLens room so each person gets their own talk-time and engagement: share the invite link with everyone."
+              : platform === "interlens" ? "The candidate sees only a normal video call. Analytics stay with you."
               : `Host the call on ${PLATFORMS[platform].label} as usual. In the cockpit, press “Connect ${PLATFORMS[platform].short}” and the analysis starts; the candidate installs nothing.`}
           </Badge>
           <Button className="w-full" size="lg">Create session</Button>

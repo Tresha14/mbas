@@ -154,7 +154,9 @@ def create_app(cfg: Settings | None = None, db: Database | None = None, bus=None
         with db.session() as s:
             iv = Interview(owner_id=int(c["sub"]), title=body.title, mode=mode, room=f"mbas-{secrets.token_hex(6)}",
                            invite_token=secrets.token_urlsafe(24), candidate_name=body.candidate_name,
-                           scheduled_at=body.scheduled_at, platform=body.platform)
+                           scheduled_at=body.scheduled_at,
+                           # a captured Meet / Zoom tab is one mixed stream, so meetings (per-person analysis) stay in our room
+                           platform=body.platform if mode == "interview" else "interlens")
             s.add(iv)
             s.commit()
             return _iv(iv, cfg)
